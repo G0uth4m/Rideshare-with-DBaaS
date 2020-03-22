@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  users:
+    build: .
+    image: users:latest
+    command: python3 -u views.py
+    container_name: users
+    ports:
+      - "80:80"
+    volumes:
+      - .:/app_users

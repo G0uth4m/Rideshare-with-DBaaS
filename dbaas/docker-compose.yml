@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  orchestrator:
+    build: ./orchestrator
+    image: orchestrator:latest
+    command: python3 -u db.py
+    container_name: orchestrator
+    ports:
+      - "80:80"
+    volumes:
+      - ./orchestrator:/orchestrator
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:latest
+    container_name: rabbitmq
+    hostname: rabbitmq
+    networks:
+      - backend
+
+  zookeeper:
+    image: zookeeper:latest
+    container_name: zookeeper
+    networks:
+      - backend
+
+  slave:
+    build: ./slave
+    image: slave:latest
+    command: python3 -u consume_reads.py
+    container_name: slave
+    volumes:
+    - ./slave:/slave
+    links:
+      - mongoslave
+    networks:
+      - backend
+
+  mongoslave:
+    image: mongo:latest
+    container_name: mongoslave
+
+  master:
+    build: ./master
+    image: master:latest
+    command: python3 -u consume_writes.py
+    container_name: master
+    volumes:
+      - ./master:/master
+    links:
+      - mongomaster
+    networks:
+      - backend
+
+  mongomaster:
+    image: mongo:latest
+    container_name: mongomaster
+
+networks:
+  backend:
+    driver: bridge
