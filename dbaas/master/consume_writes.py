@@ -1,4 +1,5 @@
 import pika
+import json
 from dbaas.master.config import db, rabbitmq_hostname
 from datetime import datetime
 
@@ -146,11 +147,77 @@ def convert_datetime_to_timestamp(k):
     return day + "-" + month + "-" + year + ":" + second + "-" + minute + "-" + hour
 
 
-def main():
-    if master:
-        produce()
+def produce(queue_name, json_msg):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+    channel = connection.channel()
+    channel.queue_declare(queue=queue_name, durable=True)
+    channel.basic_publish(exchange='',
+                          routing_key=queue_name,
+                          body=json.dumps(json_msg),
+                          properties=pika.BasicProperties(
+                              delivery_mode=2,
+                          ))
+    connection.close()
+
+
+def consume(is_master):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+    if is_master:
+        queue_name = 'writeQ'
+        channel = connection.channel()
+        channel.queue_declare(queue=queue_name, durable=True)
+        channel.basic_consume(queue=queue_name, on_message_callback=callback_master)
+        channel.start_consuming()
     else:
-        consume()
+        queue_name = 'readQ'
+        exchange_name = 'syncQ'
+
+        channel1 = connection.channel()
+        channel2 = connection.channel()
+
+        channel1.queue_declare(queue=queue_name, durable=True)
+
+        channel2.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        result = channel2.queue_declare(queue='', exclusive=True)
+        channel2_queue_name = result.method.queue
+        channel2.queue_bind(exchange=exchange_name, queue=channel2_queue_name)
+
+        channel1.basic_qos(prefetch_count=1)
+
+        channel1.basic_consume(queue=queue_name, on_message_callback=callback_slave)
+        channel2.basic_consume(queue=channel2_queue_name, on_message_callback=callback_slave_write)
+
+        channel1.start_consuming()
+        channel2.start_consuming()
+
+
+def callback_master(ch, method, properties, body):
+    res = writedb(json.loads(body))
+    produce(queue_name='writeResponseQ', json_msg=json.dumps(res))
+    publish('syncQ', body)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+def callback_slave(ch, method, properties, body):
+    res = readdb(json.loads(body))
+    produce(queue_name='responseQ', json_msg=json.dumps(res))
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+def callback_slave_write(ch, method, properties, body):
+    writedb(json.loads(body))
+
+
+def publish(exchange_name, json_msg):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+    channel = connection.channel()
+    channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+    channel.basic_publish(exchange=exchange_name, routing_key='', body=json.dumps(json_msg))
+    connection.close()
+
+
+def main():
+    consume(master)
 
 
 if __name__ == "__main__":

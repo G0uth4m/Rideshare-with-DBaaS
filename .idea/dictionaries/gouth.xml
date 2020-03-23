@@ -4,6 +4,9 @@
       <w>amazonaws</w>
       <w>balancer</w>
       <w>dbaas</w>
+      <w>fanout</w>
+      <w>readdb</w>
+      <w>writedb</w>
     </words>
   </dictionary>
 </component>

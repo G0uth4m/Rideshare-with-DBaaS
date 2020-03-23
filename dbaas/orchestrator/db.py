@@ -89,7 +89,6 @@ def produce(queue_name, json_msg):
                           routing_key=queue_name,
                           body=json.dumps(json_msg),
                           properties=pika.BasicProperties(
-                              content_type="application/json",
                               delivery_mode=2,
                           ))
     connection.close()
