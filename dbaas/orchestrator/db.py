@@ -1,5 +1,7 @@
+import pika
+import json
 from flask import Flask, request, Response, jsonify
-from dbaas.orchestrator.config import db, rabbitmq_hostname
+from dbaas.orchestrator.config import rabbitmq_hostname
 from datetime import datetime
 
 app = Flask(__name__)
@@ -8,13 +10,23 @@ app = Flask(__name__)
 @app.route('/api/v1/db/write', methods=["POST"])
 def write_to_db():
     request_data = request.get_json(force=True)
-    # TODO: Send request_data to master via rabbitmq using pika
+    # Send request_data to master via rabbitmq using pika
+    produce(queue_name='writeQ', json_msg=request_data)
+    res = consume(queue_name='writeResponseQ')
+    if res == "Response(status=400)":
+        return Response(status=400)
+    return Response(status=200)
 
 
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
     request_data = request.get_json(force=True)
-    # TODO: Send request_data to slave via rabbitmq using pika
+    # Send request_data to slave via rabbitmq using pika
+    produce(queue_name='readQ', json_msg=request_data)
+    res = consume(queue_name='responseQ')
+    if res == "Response(status=400)":
+        return Response(status=400)
+    return jsonify(res)
 
 
 @app.route('/api/v1/file/read', methods=["POST"])
@@ -69,6 +81,36 @@ def list_workers():
     # TODO: Return sorted list of pid’s of the container’s of all the workers
 
 
+def produce(queue_name, json_msg):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+    channel = connection.channel()
+    channel.queue_declare(queue=queue_name, durable=True)
+    channel.basic_publish(exchange='',
+                          routing_key=queue_name,
+                          body=json.dumps(json_msg),
+                          properties=pika.BasicProperties(
+                              content_type="application/json",
+                              delivery_mode=2,
+                          ))
+    connection.close()
+
+
+def consume(queue_name):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+    channel = connection.channel()
+    channel.queue_declare(queue=queue_name, durable=True)
+
+    for method_frame, properties, body in channel.consume(queue_name):
+        res = json.loads(body)
+        channel.basic_ack(method_frame.delivery_tag)
+        if method_frame.delivery_tag == 1:
+            break
+    channel.cancel()
+    channel.close()
+    connection.close()
+    return res
+
+
 def convert_datetime_to_timestamp(k):
     day = str(k.day) if len(str(k.day)) == 2 else "0" + str(k.day)
     month = str(k.month) if len(str(k.month)) == 2 else "0" + str(k.month)
@@ -87,6 +129,12 @@ def convert_timestamp_to_datetime(time_stamp):
     minutes = int(time_stamp[14:16])
     hours = int(time_stamp[17:19])
     return datetime(year, month, day, hours, minutes, seconds)
+
+
+def bring_up_new_worker_container():
+    pass
+    # TODO: keep count of all incoming requests for dbread api and bring up new slave containers every 2 minutes
+    #  depending on the number of requests
 
 
 if __name__ == "__main__":
