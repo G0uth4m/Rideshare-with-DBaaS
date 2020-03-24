@@ -194,7 +194,8 @@ def consume(is_master):
 def callback_master(ch, method, properties, body):
     res = writedb(json.loads(body))
     produce(queue_name='writeResponseQ', json_msg=json.dumps(res))
-    publish('syncQ', body)
+    if res != "Response(status=400)":
+        publish('syncQ', body)
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
