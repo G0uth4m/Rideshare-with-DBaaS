@@ -116,17 +116,6 @@ def readdb(request_data):
         return "Response(status=400)"
 
 
-def consume():
-    pass
-    # TODO: If slave: Read the db read request readQ and send the response to the responseQ (6. RPC)
-
-
-def produce():
-    pass
-    # TODO: If master: Read the db write request from writeQ, and send response to the writeResponseQ. Send
-    #  received dbwrite request to syncQ (3. publish/subscribe)
-
-
 def convert_timestamp_to_datetime(time_stamp):
     day = int(time_stamp[0:2])
     month = int(time_stamp[3:5])
@@ -194,7 +183,8 @@ def consume(is_master):
 def callback_master(ch, method, properties, body):
     res = writedb(json.loads(body))
     produce(queue_name='writeResponseQ', json_msg=json.dumps(res))
-    publish('syncQ', body)
+    if res != "Response(status=400)":
+        publish('syncQ', body)
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -221,5 +211,5 @@ def main():
 
 
 if __name__ == "__main__":
-    master = False
+    master = True
     main()

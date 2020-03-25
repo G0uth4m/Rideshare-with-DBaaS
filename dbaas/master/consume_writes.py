@@ -116,17 +116,6 @@ def readdb(request_data):
         return "Response(status=400)"
 
 
-def consume():
-    pass
-    # TODO: If slave: Read the db read request readQ and send the response to the responseQ (6. RPC)
-
-
-def produce():
-    pass
-    # TODO: If master: Read the db write request from writeQ, and send response to the writeResponseQ. Send
-    #  received dbwrite request to syncQ (3. publish/subscribe)
-
-
 def convert_timestamp_to_datetime(time_stamp):
     day = int(time_stamp[0:2])
     month = int(time_stamp[3:5])

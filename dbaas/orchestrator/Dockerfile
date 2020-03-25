@@ -1,10 +1,10 @@
-FROM rabbitmq:latest
+FROM ubuntu:latest
 
 RUN apt-get update
 RUN apt-get -y install python3 python3-pip
 
 WORKDIR /db
-COPY .. /db
+COPY . /db
 
 ENV TEAM_NAME=CC_0132_1017_1025_1666
 
