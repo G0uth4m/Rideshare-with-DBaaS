@@ -38,7 +38,7 @@ services:
     command: python3 -u worker.py
     container_name: slave
     volumes:
-    - ./worker:/slave
+    - ./worker:/worker
     links:
       - mongoslave
     networks:
@@ -60,7 +60,7 @@ services:
     command: python3 -u worker.py
     container_name: master
     volumes:
-      - ./worker:/master
+      - ./worker:/worker
     links:
       - mongomaster
     networks:
