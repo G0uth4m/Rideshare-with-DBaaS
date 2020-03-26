@@ -1,8 +1,6 @@
-import pika
 import json
 from flask import Flask, request, Response, jsonify
-from dbaas.orchestrator.config import rabbitmq_hostname
-from datetime import datetime
+from dbaas.orchestrator.rpc_client import RpcClient
 
 app = Flask(__name__)
 
@@ -11,8 +9,9 @@ app = Flask(__name__)
 def write_to_db():
     request_data = request.get_json(force=True)
     # Send request_data to master via rabbitmq using pika
-    produce(queue_name='writeQ', json_msg=request_data)
-    res = consume(queue_name='writeResponseQ')
+    rpc_client = RpcClient(routing_key='writeQ')
+    res = rpc_client.call(json_msg=request_data)
+    res = json.loads(res)
     if res == "Response(status=400)":
         return Response(status=400)
     return Response(status=200)
@@ -22,8 +21,9 @@ def write_to_db():
 def read_from_db():
     request_data = request.get_json(force=True)
     # Send request_data to slave via rabbitmq using pika
-    produce(queue_name='readQ', json_msg=request_data)
-    res = consume(queue_name='responseQ')
+    rpc_client = RpcClient(routing_key='readQ')
+    res = rpc_client.call(json_msg=request_data)
+    res = json.loads(res)
     if res == "Response(status=400)":
         return Response(status=400)
     return jsonify(res)
@@ -79,55 +79,6 @@ def kill_slave():
 def list_workers():
     pass
     # TODO: Return sorted list of pid’s of the container’s of all the workers
-
-
-def produce(queue_name, json_msg):
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
-    channel = connection.channel()
-    channel.queue_declare(queue=queue_name, durable=True)
-    channel.basic_publish(exchange='',
-                          routing_key=queue_name,
-                          body=json.dumps(json_msg),
-                          properties=pika.BasicProperties(
-                              delivery_mode=2,
-                          ))
-    connection.close()
-
-
-def consume(queue_name):
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
-    channel = connection.channel()
-    channel.queue_declare(queue=queue_name, durable=True)
-
-    for method_frame, properties, body in channel.consume(queue_name):
-        res = json.loads(body)
-        channel.basic_ack(method_frame.delivery_tag)
-        if method_frame.delivery_tag == 1:
-            break
-    channel.cancel()
-    channel.close()
-    connection.close()
-    return res
-
-
-def convert_datetime_to_timestamp(k):
-    day = str(k.day) if len(str(k.day)) == 2 else "0" + str(k.day)
-    month = str(k.month) if len(str(k.month)) == 2 else "0" + str(k.month)
-    year = str(k.year)
-    second = str(k.second) if len(str(k.second)) == 2 else "0" + str(k.second)
-    minute = str(k.minute) if len(str(k.minute)) == 2 else "0" + str(k.minute)
-    hour = str(k.hour) if len(str(k.hour)) == 2 else "0" + str(k.hour)
-    return day + "-" + month + "-" + year + ":" + second + "-" + minute + "-" + hour
-
-
-def convert_timestamp_to_datetime(time_stamp):
-    day = int(time_stamp[0:2])
-    month = int(time_stamp[3:5])
-    year = int(time_stamp[6:10])
-    seconds = int(time_stamp[11:13])
-    minutes = int(time_stamp[14:16])
-    hours = int(time_stamp[17:19])
-    return datetime(year, month, day, hours, minutes, seconds)
 
 
 def bring_up_new_worker_container():
