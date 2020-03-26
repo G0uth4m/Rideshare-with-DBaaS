@@ -33,12 +33,12 @@ services:
       - backend
 
   slave:
-    build: ./slave
+    build: ./worker
     image: slave:latest
-    command: python3 -u consume_reads.py
+    command: python3 -u worker.py
     container_name: slave
     volumes:
-    - ./slave:/slave
+    - ./worker:/slave
     links:
       - mongoslave
     networks:
@@ -46,18 +46,21 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    environment:
+      - WORKER_TYPE=slave
+      - DB_HOSTNAME=mongoslave
 
   mongoslave:
     image: mongo:latest
     container_name: mongoslave
 
   master:
-    build: ./master
+    build: ./worker
     image: master:latest
-    command: python3 -u consume_writes.py
+    command: python3 -u worker.py
     container_name: master
     volumes:
-      - ./master:/master
+      - ./worker:/master
     links:
       - mongomaster
     networks:
@@ -65,6 +68,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    environment:
+      - WORKER_TYPE=master
+      - DB_HOSTNAME=mongomaster
 
   mongomaster:
     image: mongo:latest
