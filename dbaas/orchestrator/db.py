@@ -1,6 +1,7 @@
 import json
 from flask import Flask, request, Response, jsonify
 from dbaas.orchestrator.rpc_client import RpcClient
+import sys
 
 app = Flask(__name__)
 
@@ -12,6 +13,7 @@ def write_to_db():
     rpc_client = RpcClient(routing_key='writeQ')
     res = rpc_client.call(json_msg=request_data)
     res = json.loads(res)
+    print("Received response: " + str(res), file=sys.stdout)
     if res == "Response(status=400)":
         return Response(status=400)
     return Response(status=200)
@@ -24,6 +26,7 @@ def read_from_db():
     rpc_client = RpcClient(routing_key='readQ')
     res = rpc_client.call(json_msg=request_data)
     res = json.loads(res)
+    print("Received response: " + str(res), file=sys.stdout)
     if res == "Response(status=400)":
         return Response(status=400)
     return jsonify(res)

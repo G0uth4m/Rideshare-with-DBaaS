@@ -1,6 +1,7 @@
 import pika
 import json
 from dbaas.worker.config import rabbitmq_hostname
+import sys
 
 
 class RpcServer:
@@ -16,6 +17,7 @@ class RpcServer:
 
     def on_request(self, ch, method, props, body):
         res = json.loads(body)
+        print("Received: " +str(res), file=sys.stdout)
         response = self.func(res)
 
         ch.basic_publish(
@@ -44,9 +46,11 @@ class RpcServer:
             channel2.start_consuming()
 
     def calback_slave(self, ch, method, properties, body):
+        print("Reading db for query: " + str(json.loads(body)), file=sys.stdout)
         self.func2(json.loads(body))
 
     def publish(self, exchange_name, json_msg):
+        print("Publishing: " + str(json_msg), file=sys.stdout)
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         channel = connection.channel()
         channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')

@@ -2,6 +2,7 @@ import os
 from dbaas.worker.config import db
 from datetime import datetime
 from dbaas.worker.rpc_server import RpcServer
+import sys
 
 
 def writedb(request_data):
@@ -139,11 +140,11 @@ def convert_datetime_to_timestamp(k):
 def main():
     if os.environ['WORKER_TYPE'] == "master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
-        print("[*] Listening on writeQ")
+        print("[*] Listening on writeQ", file=sys.stdout)
         rpc_server.start()
     else:
         rpc_server = RpcServer(queue_name='readQ', func=readdb, is_master=False, func2=writedb)
-        print("[*] Listening on readQ")
+        print("[*] Listening on readQ", file=sys.stdout)
         rpc_server.start()
 
 
