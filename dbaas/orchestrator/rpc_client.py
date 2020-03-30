@@ -2,6 +2,7 @@ import pika
 import json
 import uuid
 from dbaas.worker.config import rabbitmq_hostname
+import sys
 
 
 class RpcClient:
@@ -25,6 +26,7 @@ class RpcClient:
     def call(self, json_msg):
         self.response = None
         self.corr_id = str(uuid.uuid4())
+        print("Sending data: " + str(json_msg), file=sys.stdout)
         self.channel.basic_publish(
             exchange='',
             routing_key=self.routing_key,
