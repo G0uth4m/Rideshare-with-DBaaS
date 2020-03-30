@@ -11,8 +11,8 @@ def writedb(request_data):
             delete = request_data['delete']
             column = request_data['column']
             collection = request_data['table']
-        except KeyError:
-            # print("Inappropriate request received")
+        except KeyError as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
         try:
@@ -22,8 +22,8 @@ def writedb(request_data):
             if x.raw_result['n'] == 1:
                 return "Response(status=200)"
             return "Response(status=400)"
-        except:
-            # print("Mongo query failed")
+        except Exception as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
     if 'update' in request_data:
@@ -33,8 +33,8 @@ def writedb(request_data):
             array = request_data['update']
             data = request_data['data']
             operation = request_data['operation']
-        except KeyError:
-            # print("Inappropriate request received")
+        except KeyError as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
         try:
@@ -43,15 +43,16 @@ def writedb(request_data):
             if x.raw_result['n'] == 1:
                 return "Response(status=200)"
             return "Response(status=400)"
-        except:
+        except Exception as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
     try:
         insert = request_data['insert']
         columns = request_data['columns']
         collection = request_data['table']
-    except KeyError:
-        # print("Inappropriate request received")
+    except KeyError as e:
+        print(e, file=sys.stdout)
         return "Response(status=400)"
 
     try:
@@ -66,7 +67,8 @@ def writedb(request_data):
         collection.insert_one(document)
         return "Response(status=201)"
 
-    except:
+    except Exception as e:
+        print(e, file=sys.stdout)
         return "Response(status=400)"
 
 
@@ -76,15 +78,16 @@ def readdb(request_data):
             collection = db[request_data['table']]
             res = [collection.count_documents({})]
             return res
-        except:
+        except Exception as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
     try:
         table = request_data['table']
         columns = request_data['columns']
         where = request_data['where']
-    except KeyError:
-        # print("Inappropriate request received")
+    except KeyError as e:
+        print(e, file=sys.stdout)
         return "Response(status=400)"
 
     if "timestamp" in where:
@@ -104,7 +107,8 @@ def readdb(request_data):
                 res.append(i)
 
             return res
-        except:
+        except Exception as e:
+            print(e, file=sys.stdout)
             return "Response(status=400)"
 
     try:
@@ -113,7 +117,8 @@ def readdb(request_data):
         if "timestamp" in result:
             result["timestamp"] = convert_datetime_to_timestamp(result["timestamp"])
         return result
-    except:
+    except Exception as e:
+        print(e, file=sys.stdout)
         return "Response(status=400)"
 
 

@@ -18,8 +18,10 @@ class RpcServer:
     def on_request(self, ch, method, props, body):
         res = json.loads(body)
         print("Received: " + str(res), file=sys.stdout)
+        print(type(res))
         response = self.func(res)
-
+        print("Sending: " + str(response), file=sys.stdout)
+        print(type(response))
         ch.basic_publish(
             exchange='',
             routing_key=props.reply_to,
@@ -28,7 +30,7 @@ class RpcServer:
             ),
             body=json.dumps(response)
         )
-        if self.is_master:
+        if self.is_master and response != "Response(status=400)":
             self.publish(exchange_name='syncQ', json_msg=res)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)

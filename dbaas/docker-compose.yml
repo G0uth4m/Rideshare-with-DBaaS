@@ -39,8 +39,6 @@ services:
     container_name: slave
     volumes:
     - ./worker:/worker
-    links:
-      - mongoslave
     networks:
       - backend
     depends_on:
@@ -53,6 +51,8 @@ services:
   mongoslave:
     image: mongo:latest
     container_name: mongoslave
+    networks:
+      - backend
 
   master:
     build: ./worker
@@ -61,8 +61,6 @@ services:
     container_name: master
     volumes:
       - ./worker:/worker
-    links:
-      - mongomaster
     networks:
       - backend
     depends_on:
@@ -75,6 +73,8 @@ services:
   mongomaster:
     image: mongo:latest
     container_name: mongomaster
+    networks:
+      - backend
 
 networks:
   backend:
