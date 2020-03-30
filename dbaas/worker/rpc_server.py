@@ -17,7 +17,7 @@ class RpcServer:
 
     def on_request(self, ch, method, props, body):
         res = json.loads(body)
-        print("Received: " +str(res), file=sys.stdout)
+        print("Received: " + str(res), file=sys.stdout)
         response = self.func(res)
 
         ch.basic_publish(
@@ -46,7 +46,7 @@ class RpcServer:
             channel2.start_consuming()
 
     def calback_slave(self, ch, method, properties, body):
-        print("Reading db for query: " + str(json.loads(body)), file=sys.stdout)
+        print("Writing db for query: " + str(json.loads(body)), file=sys.stdout)
         self.func2(json.loads(body))
 
     def publish(self, exchange_name, json_msg):
