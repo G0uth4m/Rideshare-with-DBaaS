@@ -38,6 +38,7 @@ class RpcServer:
 
     def consume(self, queue_name, callback_fn):
         self.channel.basic_consume(queue=queue_name, on_message_callback=callback_fn)
+        print("[*] Listening on " + queue_name, file=sys.stdout)
         self.channel.start_consuming()
 
     def subscribe(self, exchange_name, callback_fn):
