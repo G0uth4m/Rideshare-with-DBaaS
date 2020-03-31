@@ -2,6 +2,7 @@ import pika
 import json
 from dbaas.worker.config import rabbitmq_hostname
 import sys
+import threading
 
 
 class RpcServer:
@@ -12,7 +13,7 @@ class RpcServer:
         self.is_master = is_master
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=self.queue_name)
+        self.channel.queue_declare(queue=self.queue_name, durable=True)
         self.channel.basic_qos(prefetch_count=1)
 
     def on_request(self, ch, method, props, body):
@@ -35,19 +36,33 @@ class RpcServer:
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    def start(self):
-        self.channel.basic_consume(queue=self.queue_name, on_message_callback=self.on_request)
+    def consume(self, queue_name, callback_fn):
+        self.channel.basic_consume(queue=queue_name, on_message_callback=callback_fn)
         self.channel.start_consuming()
-        if not self.is_master:
-            channel2 = self.connection.channel()
-            channel2.exchange_declare(queue='', exchange_type='fanout')
-            result = channel2.queue_declare(queue='', exclusive=True)
-            queue_name = result.method.queue
-            channel2.queue_bind(exchange='syncQ', queue=queue_name)
-            channel2.basic_consume(queue=queue_name, on_message_callback=self.calback_slave, auto_ack=True)
-            channel2.start_consuming()
 
-    def calback_slave(self, ch, method, properties, body):
+    def subscribe(self, exchange_name, callback_fn):
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
+        channel2 = connection.channel()
+        channel2.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        result = channel2.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        channel2.queue_bind(exchange=exchange_name, queue=queue_name)
+        channel2.basic_consume(queue=queue_name, on_message_callback=callback_fn, auto_ack=True)
+        print("[*] Listening on syncQ", file=sys.stdout)
+        channel2.start_consuming()
+
+    def start(self):
+        if not self.is_master:
+            t1 = threading.Thread(target=self.consume, args=(self.queue_name, self.on_request,))
+            t2 = threading.Thread(target=self.subscribe, args=("syncQ", self.callback_slave))
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+        else:
+            self.consume(self.queue_name, self.on_request)
+
+    def callback_slave(self, ch, method, properties, body):
         print("Writing db for query: " + str(json.loads(body)), file=sys.stdout)
         self.func2(json.loads(body))
 

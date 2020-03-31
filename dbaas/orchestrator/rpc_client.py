@@ -10,7 +10,7 @@ class RpcClient:
         self.routing_key = routing_key
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         self.channel = self.connection.channel()
-        result = self.channel.queue_declare(queue='', exclusive=True)
+        result = self.channel.queue_declare(queue='', exclusive=True, durable=True)
         self.callback_queue = result.method.queue
 
         self.channel.basic_consume(
@@ -33,6 +33,7 @@ class RpcClient:
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
+                delivery_mode=2,
             ),
             body=json.dumps(json_msg)
         )
