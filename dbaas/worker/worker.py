@@ -1,8 +1,10 @@
 import os
-from dbaas.worker.config import db
+from dbaas.worker.config import db, zookeeper_hostname
 from datetime import datetime
 from dbaas.worker.rpc_server import RpcServer
 import sys
+import logging
+from kazoo.client import KazooClient, KazooState
 
 
 def writedb(request_data):
@@ -143,7 +145,20 @@ def convert_datetime_to_timestamp(k):
 
 
 def main():
-    if os.environ['WORKER_TYPE'] == "master":
+    logging.basicConfig()
+    zk = KazooClient(hosts=zookeeper_hostname)
+    zk.start()
+    worker_type = "/" + os.environ["WORKER_TYPE"]
+    zk.ensure_path(worker_type)
+    node_name = worker_type + "/" + os.environ["NODE_NAME"]
+    if not zk.exists(node_name):
+        msg = "Creating node: " + node_name
+        zk.create(node_name, msg.encode())
+
+    data, stat = zk.get(node_name)
+    print("Version: " + stat.version + "\nData: " + data.decode())
+
+    if worker_type == "master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
         print("[*] Listening on writeQ", file=sys.stdout)
         rpc_server.start()

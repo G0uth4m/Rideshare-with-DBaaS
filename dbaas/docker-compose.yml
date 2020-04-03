@@ -29,8 +29,12 @@ services:
   zookeeper:
     image: zookeeper:latest
     container_name: zookeeper
+    hostname: zookeeper
     networks:
       - backend
+    environment:
+      - ZOO_MY_ID=1
+      - ZOO_SERVERS=server.1=0.0.0.0:2888:3888;2181
 
   slave:
     build: ./worker
@@ -47,6 +51,7 @@ services:
     environment:
       - WORKER_TYPE=slave
       - DB_HOSTNAME=mongoslave
+      - NODE_NAME=slave1
 
   mongoslave:
     image: mongo:latest
@@ -69,6 +74,7 @@ services:
     environment:
       - WORKER_TYPE=master
       - DB_HOSTNAME=mongomaster
+      - NODE_NAME=master
 
   mongomaster:
     image: mongo:latest
