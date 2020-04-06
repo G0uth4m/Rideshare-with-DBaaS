@@ -3,7 +3,8 @@ from flask import Flask, request, Response, jsonify
 from dbaas.orchestrator.rpc_client import RpcClient
 from dbaas.orchestrator.config import client, apiClient
 import sys
-
+import subprocess
+import threading
 
 app = Flask(__name__)
 
@@ -24,15 +25,15 @@ def write_to_db():
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
     increment_requests_count()
-
     curr_count = get_requests_count()
+
     if curr_count == 1:
-        pass
-        # TODO: start scalability script
+        subprocess.Popen("python3 scaling.py", shell=True, stdout=subprocess.PIPE)
     elif curr_count % 10 == 1 and (curr_count // 10) % 2 == 0:
         slave_name = "slave" + str((curr_count + 19)/20)
         db_name = "mongoslave" + str((curr_count + 19)/20)
-        bring_up_new_worker_container(slave_name, db_name)
+        t1 = threading.Thread(target=bring_up_new_worker_container, args=(slave_name, db_name,))
+        t1.start()
 
     request_data = request.get_json(force=True)
 
@@ -147,7 +148,7 @@ def get_pid_of_all_workers():
     containers = client.containers.list()
     res = []
     for i in containers:
-        if "slave" in i.name  or "master" in i.name:
+        if "mongo" not in i.name and "slave" in i.name or "master" in i.name:
             pid = apiClient.inspect_container(i.name)["State"]["Pid"]
             res.append(pid)
     return res

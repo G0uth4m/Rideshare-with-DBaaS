@@ -18,4 +18,5 @@ socat -d -d -lf $SOCAT_LOG \
         TCP4-LISTEN:$PUBLIC_PORT,reuseaddr,fork,tcpwrap=socat,allow-table=socat-allow,deny-table=socat-deny \
         UNIX-CONNECT:$PRIVATE_SOCKET
 
-# sudo ./sock_to_tcp.sh 4444 /var/run/docker.sock >/dev/null 2>&1 &
+# chmod +x start_docker_engine.sh
+# sudo ./start_docker_engine.sh 4444 /var/run/docker.sock >/dev/null 2>&1 &

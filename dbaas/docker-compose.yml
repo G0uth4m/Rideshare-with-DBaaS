@@ -20,6 +20,8 @@ services:
     build: ./rabbitmq
     networks:
       - backend
+    container_name: rabbitmq
+    hostname: rabbitmq
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15672"]
       interval: 30s

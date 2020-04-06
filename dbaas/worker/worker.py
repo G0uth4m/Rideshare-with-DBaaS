@@ -5,6 +5,7 @@ from dbaas.worker.rpc_server import RpcServer
 import sys
 import logging
 from kazoo.client import KazooClient, KazooState
+import subprocess
 
 
 def writedb(request_data):
@@ -158,7 +159,13 @@ def main():
     data, stat = zk.get(node_name)
     print("Version: " + stat.version + "\nData: " + data.decode())
 
-    if worker_type == "master":
+    subprocess.call(
+        "mongodump --host master --port 27017 --db rideshare && mongorestore --host " + os.environ['DB_HOSTNAME'] + " --port 27017 --db rideshare",
+        stdout=sys.stdout,
+        stderr=sys.stdout
+    )
+
+    if worker_type == "/master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
         print("[*] Listening on writeQ", file=sys.stdout)
         rpc_server.start()
