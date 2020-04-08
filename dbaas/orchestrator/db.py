@@ -11,7 +11,6 @@ app = Flask(__name__)
 @app.route('/api/v1/db/write', methods=["POST"])
 def write_to_db():
     request_data = request.get_json(force=True)
-    # Send request_data to master via rabbitmq using pika
     rpc_client = RpcClient(routing_key='writeQ')
     res = rpc_client.call(json_msg=request_data)
     res = json.loads(res)
@@ -95,9 +94,9 @@ def write_file():
 def kill_master():
     try:
         master = client.containers.get("master")
-        master.kill()
+        master.stop()
         master_db = client.containers.get("mongomaster")
-        master_db.kill()
+        master_db.stop()
         return Response(status=200)
     except:
         return Response(status=500)
@@ -115,11 +114,11 @@ def kill_slave():
         for i in containers:
             if apiClient.inspect_container(i.name)["State"]["Pid"] == max_pid:
                 selected_slave = i.name
-                i.kill()
+                i.stop()
                 break
 
         slave_db = client.containers.get("mongo" + selected_slave)
-        slave_db.kill()
+        slave_db.stop()
         return Response(status=200)
 
     except Exception as e:

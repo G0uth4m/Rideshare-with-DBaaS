@@ -170,8 +170,9 @@ def main():
     if not zk.exists(node_name):
         msg = "Creating node: " + node_name
         zk.create(node_name, msg.encode())
-    
-    atexit.register(delete_node, zk, node_name)
+        f = open("node_name.txt", "w")
+        f.write(node_name)
+        f.close()
 
     data, stat = zk.get(node_name)
     print("Version: " + stat.version + "\nData: " + data.decode())

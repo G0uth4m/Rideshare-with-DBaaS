@@ -51,7 +51,7 @@ def start_scaling():
         # Scale in
         n = current_slaves//2 - no_of_slaves_to_be_present
         for i in range(n, 0, -1):
-            client.containers.get("slave" + str(i)).stop()
+            client.containers.get("slave" + str(i)).kill()
 
     f = open("requests_count.txt", "w")
     f.write("0")
@@ -59,4 +59,7 @@ def start_scaling():
 
 
 schedule.every(2).minutes.do(start_scaling)
+
+while 1:
+    schedule.run_pending()
 

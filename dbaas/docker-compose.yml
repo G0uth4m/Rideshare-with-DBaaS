@@ -56,6 +56,7 @@ services:
       - WORKER_TYPE=slave
       - DB_HOSTNAME=mongoslave1
       - NODE_NAME=slave1
+    entrypoint: ["sh", "cleanup.sh"]
 
   mongoslave1:
     image: mongo:latest
@@ -79,6 +80,7 @@ services:
       - WORKER_TYPE=master
       - DB_HOSTNAME=mongomaster
       - NODE_NAME=master
+    entrypoint: ["sh", "cleanup.sh"]
 
   mongomaster:
     image: mongo:latest
