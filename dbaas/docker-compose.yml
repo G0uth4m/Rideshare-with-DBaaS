@@ -37,12 +37,14 @@ services:
     environment:
       - ZOO_MY_ID=1
       - ZOO_SERVERS=server.1=0.0.0.0:2888:3888;2181
+    ports:
+    - 2181:2181
 
-  slave:
+  slave1:
     build: ./worker
     image: slave:latest
     command: python3 -u worker.py
-    container_name: slave
+    container_name: slave1
     volumes:
     - ./worker:/worker
     networks:
@@ -52,12 +54,12 @@ services:
         condition: service_healthy
     environment:
       - WORKER_TYPE=slave
-      - DB_HOSTNAME=mongoslave
+      - DB_HOSTNAME=mongoslave1
       - NODE_NAME=slave1
 
-  mongoslave:
+  mongoslave1:
     image: mongo:latest
-    container_name: mongoslave
+    container_name: mongoslave1
     networks:
       - backend
 

@@ -4,7 +4,6 @@ from dbaas.orchestrator.rpc_client import RpcClient
 from dbaas.orchestrator.config import client, apiClient
 import sys
 import subprocess
-import threading
 
 app = Flask(__name__)
 
@@ -25,15 +24,11 @@ def write_to_db():
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
     increment_requests_count()
-    curr_count = get_requests_count()
+    global c
+    c += 1
 
-    if curr_count == 1:
-        subprocess.Popen("python3 scaling.py", shell=True, stdout=subprocess.PIPE)
-    elif curr_count % 10 == 1 and (curr_count // 10) % 2 == 0:
-        slave_name = "slave" + str((curr_count + 19)/20)
-        db_name = "mongoslave" + str((curr_count + 19)/20)
-        t1 = threading.Thread(target=bring_up_new_worker_container, args=(slave_name, db_name,))
-        t1.start()
+    if c == 1:
+        subprocess.Popen("python3 scaling.py", stdout=subprocess.PIPE, shell=True)
 
     request_data = request.get_json(force=True)
 
@@ -45,6 +40,21 @@ def read_from_db():
     if res == "Response(status=400)":
         return Response(status=400)
     return jsonify(res)
+
+
+@app.route('/api/v1/db/clear', methods=["DELETE"])
+def clear_db():
+    query = {"clear": 1, "collections": ["rides", "users"]}
+    rpc_client = RpcClient(routing_key='writeQ')
+    res = rpc_client.call(json_msg=query)
+    res = json.loads(res)
+    print("Received response: " + str(res), file=sys.stdout)
+    if res == "Response(status=400)":
+        return Response(status=500)
+    f = open("seq.txt", "w")
+    f.write("0")
+    f.close()
+    return Response(status=200)
 
 
 @app.route('/api/v1/file/read', methods=["POST"])
@@ -83,49 +93,47 @@ def write_file():
 
 @app.route('/api/v1/crash/master', methods=["DELETE"])
 def kill_master():
-    for i in client.containers.list():
-        if i.name == "master":
-            i.stop()
-            return Response(status=200)
-    return Response(status=500)
+    try:
+        master = client.containers.get("master")
+        master.kill()
+        master_db = client.containers.get("mongomaster")
+        master_db.kill()
+        return Response(status=200)
+    except:
+        return Response(status=500)
 
 
 @app.route('/api/v1/crash/slave', methods=["DELETE"])
 def kill_slave():
-    res = get_pid_of_all_workers()
-    max_pid = max(res)
+    try:
+        containers = client.containers.list()
+        res = get_pid_of_all_workers(containers)
+        max_pid = max(res)
 
-    for i in client.containers.list():
-        if apiClient.inspect_container(i.name)["State"]["Pid"] == max_pid:
-            i.stop()
-            return Response(status=200)
-    return Response(status=500)
+        selected_slave = ""
+
+        for i in containers:
+            if apiClient.inspect_container(i.name)["State"]["Pid"] == max_pid:
+                selected_slave = i.name
+                i.kill()
+                break
+
+        slave_db = client.containers.get("mongo" + selected_slave)
+        slave_db.kill()
+        return Response(status=200)
+
+    except Exception as e:
+        return Response(status=500)
 
 
 @app.route('/api/v1/worker/list', methods=["GET"])
 def list_workers():
-    res = get_pid_of_all_workers()
+    containers = client.containers.list()
+    res = get_pid_of_all_workers(containers)
+    if not res:
+        return Response(status=204)
     res.sort()
     return jsonify(res)
-
-
-def bring_up_new_worker_container(slave_name, db_name):
-    client.containers.run(
-        image="master:latest",
-        command="python3 -u worker.py",
-        environment={"DB_HOSTNAME": db_name, "WORKER_TYPE": "slave", "NODE_NAME": slave_name},
-        hostname=slave_name,
-        name=slave_name,
-        network="backend",
-        volumes={"/home/ubuntu/worker/": {"bind": "/worker", "mode": "rw"}},
-    )
-
-    client.containers.run(
-        image="mongo:latest",
-        network="backend",
-        name=db_name,
-        hostname=db_name
-    )
 
 
 def increment_requests_count():
@@ -144,8 +152,7 @@ def get_requests_count():
     return count
 
 
-def get_pid_of_all_workers():
-    containers = client.containers.list()
+def get_pid_of_all_workers(containers):
     res = []
     for i in containers:
         if "mongo" not in i.name and "slave" in i.name or "master" in i.name:
@@ -155,4 +162,5 @@ def get_pid_of_all_workers():
 
 
 if __name__ == "__main__":
+    c = 0
     app.run(debug=True, host="0.0.0.0", port=80)

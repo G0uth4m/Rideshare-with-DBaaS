@@ -7,6 +7,7 @@
       <w>fanout</w>
       <w>mongo</w>
       <w>mongodump</w>
+      <w>mongomaster</w>
       <w>mongorestore</w>
       <w>mongoslave</w>
       <w>rabbitmq</w>

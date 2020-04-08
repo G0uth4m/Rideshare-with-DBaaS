@@ -6,9 +6,20 @@ import sys
 import logging
 from kazoo.client import KazooClient, KazooState
 import subprocess
+import atexit
 
 
 def writedb(request_data):
+    if 'clear' in request_data:
+        try:
+            for i in request_data["collections"]:
+                collection = db[i]
+                collection.delete_many({})
+            return "Response(status=200)"
+        except Exception as e:
+            print(e, file=sys.stdout)
+            return "Response(status=400)"
+
     if 'delete' in request_data:
         try:
             delete = request_data['delete']
@@ -145,6 +156,10 @@ def convert_datetime_to_timestamp(k):
     return day + "-" + month + "-" + year + ":" + second + "-" + minute + "-" + hour
 
 
+def delete_node(zk, node):
+    zk.delete(node)
+
+
 def main():
     logging.basicConfig()
     zk = KazooClient(hosts=zookeeper_hostname)
@@ -155,15 +170,21 @@ def main():
     if not zk.exists(node_name):
         msg = "Creating node: " + node_name
         zk.create(node_name, msg.encode())
+    
+    atexit.register(delete_node, zk, node_name)
 
     data, stat = zk.get(node_name)
     print("Version: " + stat.version + "\nData: " + data.decode())
 
-    subprocess.call(
-        "mongodump --host master --port 27017 --db rideshare && mongorestore --host " + os.environ['DB_HOSTNAME'] + " --port 27017 --db rideshare",
-        stdout=sys.stdout,
-        stderr=sys.stdout
-    )
+    try:
+        subprocess.call(
+            "mongodump --host mongomaster --port 27017 --db rideshare && mongorestore --host " + os.environ['DB_HOSTNAME'] + " --port 27017 --db rideshare",
+            stdout=sys.stdout,
+            stderr=sys.stdout,
+            shell=True
+        )
+    except Exception as e:
+        print(e, file= sys.stdout)
 
     if worker_type == "/master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
