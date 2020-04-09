@@ -19,7 +19,6 @@ def callback_slave(event):
         temp.remove(i)
 
     print("Node deleted: " + temp[0])
-    print("A Slave failed")
     print(event)
     bring_up_new_worker_container(slave_name=temp[0], db_name="mongo" + temp[0])
 

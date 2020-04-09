@@ -4,9 +4,8 @@ from datetime import datetime
 from dbaas.worker.rpc_server import RpcServer
 import sys
 import logging
-from kazoo.client import KazooClient, KazooState
+from kazoo.client import KazooClient
 import subprocess
-import atexit
 
 
 def writedb(request_data):
@@ -169,13 +168,14 @@ def main():
     node_name = worker_type + "/" + os.environ["NODE_NAME"]
     if not zk.exists(node_name):
         msg = "Creating node: " + node_name
+        print(msg, file=sys.stdout)
         zk.create(node_name, msg.encode())
         f = open("node_name.txt", "w")
         f.write(node_name)
         f.close()
 
     data, stat = zk.get(node_name)
-    print("Version: " + stat.version + "\nData: " + data.decode())
+    print("Version: " + stat.version + "\nData: " + data.decode(), file=sys.stdout)
 
     try:
         subprocess.call(
