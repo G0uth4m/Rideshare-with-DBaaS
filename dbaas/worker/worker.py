@@ -185,7 +185,7 @@ def main():
             shell=True
         )
     except Exception as e:
-        print(e, file= sys.stdout)
+        print(e, file=sys.stdout)
 
     if worker_type == "/master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)

@@ -1,4 +1,4 @@
-version: '2.1'
+version: '3'
 
 services:
   orchestrator:
@@ -12,21 +12,17 @@ services:
       - ./orchestrator:/orchestrator
     networks:
       - backend
+    entrypoint: ["python3", "zoo_watch.py"]
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
+      - zookeeper
 
   rabbitmq:
-    build: ./rabbitmq
+    image: rabbitmq:latest
     networks:
       - backend
     container_name: rabbitmq
     hostname: rabbitmq
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:15672"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   zookeeper:
     image: zookeeper:latest
@@ -37,26 +33,24 @@ services:
     environment:
       - ZOO_MY_ID=1
       - ZOO_SERVERS=server.1=0.0.0.0:2888:3888;2181
-    ports:
-    - 2181:2181
 
   slave1:
     build: ./worker
     image: slave:latest
-    command: python3 -u worker.py
+    command: sh -c "sleep 20 && python3 -u worker.py"
     container_name: slave1
     volumes:
     - ./worker:/worker
     networks:
       - backend
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     environment:
       - WORKER_TYPE=slave
       - DB_HOSTNAME=mongoslave1
       - NODE_NAME=slave1
     entrypoint: ["sh", "cleanup.sh"]
+    depends_on:
+      - rabbitmq
+      - zookeeper
 
   mongoslave1:
     image: mongo:latest
@@ -67,20 +61,20 @@ services:
   master:
     build: ./worker
     image: master:latest
-    command: python3 -u worker.py
+    command: sh -c "sleep 20 && python3 -u worker.py"
     container_name: master
     volumes:
       - ./worker:/worker
     networks:
       - backend
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     environment:
       - WORKER_TYPE=master
       - DB_HOSTNAME=mongomaster
       - NODE_NAME=master
     entrypoint: ["sh", "cleanup.sh"]
+    depends_on:
+      - rabbitmq
+      - zookeeper
 
   mongomaster:
     image: mongo:latest
