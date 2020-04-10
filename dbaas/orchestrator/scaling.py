@@ -7,6 +7,11 @@ import math
 
 
 def bring_up_new_worker_container(slave_name, db_name):
+    try:
+        client.containers.get(slave_name).remove()
+    except:
+        pass
+
     client.containers.run(
         image="master:latest",
         command="python3 -u worker.py",
@@ -17,6 +22,11 @@ def bring_up_new_worker_container(slave_name, db_name):
         network="backend",
         detach=True
     )
+
+    try:
+        client.containers.get(db_name).remove()
+    except:
+        pass
 
     client.containers.run(
         image="mongo:latest",
@@ -62,5 +72,5 @@ def start_scaling():
 schedule.every(2).minutes.do(start_scaling)
 
 while 1:
-    schedule.run_pending()
+    schedule.run_all()
 

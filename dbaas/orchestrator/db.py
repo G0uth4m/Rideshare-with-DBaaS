@@ -4,6 +4,7 @@ from dbaas.orchestrator.rpc_client import RpcClient
 from dbaas.orchestrator.config import client, apiClient
 import sys
 import subprocess
+import threading
 
 app = Flask(__name__)
 
@@ -106,7 +107,7 @@ def kill_master():
 def kill_slave():
     try:
         containers = client.containers.list()
-        res = get_pid_of_all_workers(containers)
+        res = get_pid_of_all_slaves(containers)
         max_pid = max(res)
 
         selected_slave = ""
@@ -154,12 +155,29 @@ def get_requests_count():
 def get_pid_of_all_workers(containers):
     res = []
     for i in containers:
-        if "mongo" not in i.name and "slave" in i.name or "master" in i.name:
+        if "mongo" not in i.name and ("slave" in i.name or "master" in i.name):
+            print(i.name, file=sys.stdout)
             pid = apiClient.inspect_container(i.name)["State"]["Pid"]
             res.append(pid)
     return res
 
 
+def get_pid_of_all_slaves(containers):
+    res = []
+    for i in containers:
+        if "mongo" not in i.name and "slave" in i.name:
+            print(i.name, file=sys.stdout)
+            pid = apiClient.inspect_container(i.name)["State"]["Pid"]
+            res.append(pid)
+    return res
+
+
+def start_zoo_watch():
+    subprocess.Popen(["python3", "zoo_watch.py"])
+
+
 if __name__ == "__main__":
+    t1 = threading.Thread(target=start_zoo_watch)
+    t1.start()
     c = 0
     app.run(debug=True, host="0.0.0.0", port=80)

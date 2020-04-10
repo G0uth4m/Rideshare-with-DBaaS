@@ -2,3 +2,4 @@ flask
 pika
 docker
 schedule
+kazoo
