@@ -12,22 +12,19 @@ services:
       - ./orchestrator:/orchestrator
     networks:
       - backend
-    entrypoint: ["python3", "zoo_watch.py"]
     depends_on:
-      - rabbitmq
-      - zookeeper
+      - rmq
+      - zoo
 
-  rabbitmq:
+  rmq:
     image: rabbitmq:latest
     networks:
       - backend
-    container_name: rabbitmq
-    hostname: rabbitmq
+    hostname: rmq
 
-  zookeeper:
+  zoo:
     image: zookeeper:latest
-    container_name: zookeeper
-    hostname: zookeeper
+    hostname: zoo
     networks:
       - backend
     environment:
@@ -49,8 +46,8 @@ services:
       - NODE_NAME=slave1
     entrypoint: ["sh", "cleanup.sh"]
     depends_on:
-      - rabbitmq
-      - zookeeper
+      - rmq
+      - zoo
 
   mongoslave1:
     image: mongo:latest
@@ -73,8 +70,8 @@ services:
       - NODE_NAME=master
     entrypoint: ["sh", "cleanup.sh"]
     depends_on:
-      - rabbitmq
-      - zookeeper
+      - rmq
+      - zoo
 
   mongomaster:
     image: mongo:latest

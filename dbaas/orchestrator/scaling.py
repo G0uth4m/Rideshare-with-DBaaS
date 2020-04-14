@@ -7,8 +7,13 @@ import sys
 
 def bring_up_new_worker_container(slave_name, db_name):
     try:
-        client.containers.get(slave_name).remove()
-        client.containers.get(db_name).remove()
+        slave = client.containers.get(slave_name)
+        db = client.containers.get(db_name)
+        while slave in client.containers.list() and db in client.containers.list():
+            print("[*] Waiting for containers to stop", file=sys.stdout)
+            time.sleep(1)
+        slave.remove()
+        db.remove()
     except Exception as e:
         print(e, file=sys.stdout)
 
@@ -19,13 +24,13 @@ def bring_up_new_worker_container(slave_name, db_name):
         entrypoint=["sh", "cleanup.sh"],
         hostname=slave_name,
         name=slave_name,
-        network="backend",
+        network="ubuntu_backend",
         detach=True
     )
 
     client.containers.run(
         image="mongo:latest",
-        network="backend",
+        network="ubuntu_backend",
         name=db_name,
         hostname=db_name,
         detach=True

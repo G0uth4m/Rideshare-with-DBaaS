@@ -170,12 +170,9 @@ def main():
         msg = "Creating node: " + node_name
         print(msg, file=sys.stdout)
         zk.create(node_name, msg.encode())
-        f = open("node_name.txt", "w")
-        f.write(node_name)
-        f.close()
-
-    data, stat = zk.get(node_name)
-    print("Version: " + stat.version + "\nData: " + data.decode(), file=sys.stdout)
+    f = open("node_name.txt", "w")
+    f.write(node_name)
+    f.close()
 
     try:
         subprocess.call(
