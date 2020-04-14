@@ -1,52 +1,54 @@
 from kazoo.client import KazooClient
 import logging
-from dbaas.orchestrator.config import zookeeper_hostname
 from dbaas.orchestrator.scaling import bring_up_new_worker_container
-import threading
 import time
-
-logging.basicConfig()
-
-zk = KazooClient(hosts=zookeeper_hostname)
-zk.start()
-
-temp = []
+import sys
 
 
-def callback_slave(event):
-    slaves = zk.get_children("/slave")
-    for i in slaves:
-        temp.remove(i)
+class ZooWatch:
+    def __init__(self, zookeeper_hostname):
+        logging.basicConfig()
+        self.zk = KazooClient(hosts=zookeeper_hostname)
+        self.zk.start()
+        self.temp = []
 
-    print("Node deleted: " + temp[0])
-    print(event)
-    bring_up_new_worker_container(slave_name=temp[0], db_name="mongo" + temp[0])
+    def callback_slave(self, event):
+        print(event, file=sys.stdout)
+        slaves = self.zk.get_children("/slave")
+        print(slaves, self.temp)
+        if len(slaves) < len(self.temp):
+            for i in slaves:
+                self.temp.remove(i)
 
+            print("Node deleted: " + self.temp[0], file=sys.stdout)
+            print("Current slaves: " + str(slaves), file=sys.stdout)
+            bring_up_new_worker_container(slave_name=self.temp[0], db_name="mongo" + self.temp[0])
+        else:
+            for i in self.temp:
+                slaves.remove(i)
+            print("Node added: " + slaves[0], file=sys.stdout)
+            print("Current slaves: " + str(slaves), file=sys.stdout)
 
-def callback_master(event):
-    print("Master failed")
-    print(event)
-    # TODO: Master election
+    def callback_master(self, event):
+        print(event, file=sys.stdout)
+        master = self.zk.get_children("/master")
+        if master:
+            print("Master added: " + master[0], file=sys.stdout)
+        else:
+            print("Master failed", file=sys.stdout)
+            print(event)
+        # TODO: Master election and create new slave container
 
+    def start(self):
+        while True:
+            try:
+                self.temp = self.zk.get_children("/slave")
+                slaves = self.zk.get_children("/slave", watch=self.callback_slave)
+                print("/slave/" + str(slaves), file=sys.stdout)
 
-def f1():
-    while True:
-        temp = zk.get_children("/slave")
-        slaves = zk.get_children("/slave", watch=callback_slave)
-        print(slaves)
-        time.sleep(5)
+                master = self.zk.get_children("/master", watch=self.callback_master)
+                print("/master/" + str(master), file=sys.stdout)
 
-
-def f2():
-    while True:
-        master = zk.get_children("/master", watch=callback_master)
-        print(master)
-        time.sleep(5)
-
-
-t1 = threading.Thread(target=f1)
-t2 = threading.Thread(target=f2)
-t1.start()
-t2.start()
-
-
+                time.sleep(5)
+            except Exception as e:
+                print(e, file=sys.stdout)

@@ -1,16 +1,16 @@
-# docker commit --message="up scaling" slave slave_snapshot
-# docker run --name=slave1 slave_snapshot
 import schedule
 from dbaas.orchestrator.config import client
 from dbaas.orchestrator.db import get_requests_count
 import math
+import sys
 
 
 def bring_up_new_worker_container(slave_name, db_name):
     try:
         client.containers.get(slave_name).remove()
-    except:
-        pass
+        client.containers.get(db_name).remove()
+    except Exception as e:
+        print(e, file=sys.stdout)
 
     client.containers.run(
         image="master:latest",
@@ -22,11 +22,6 @@ def bring_up_new_worker_container(slave_name, db_name):
         network="backend",
         detach=True
     )
-
-    try:
-        client.containers.get(db_name).remove()
-    except:
-        pass
 
     client.containers.run(
         image="mongo:latest",

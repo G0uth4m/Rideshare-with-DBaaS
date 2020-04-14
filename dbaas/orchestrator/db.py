@@ -1,10 +1,11 @@
 import json
 from flask import Flask, request, Response, jsonify
 from dbaas.orchestrator.rpc_client import RpcClient
-from dbaas.orchestrator.config import client, apiClient
+from dbaas.orchestrator.config import client, apiClient, zookeeper_hostname
 import sys
 import subprocess
 import threading
+from dbaas.orchestrator.zoo_watch import ZooWatch
 
 app = Flask(__name__)
 
@@ -28,7 +29,7 @@ def read_from_db():
     c += 1
 
     if c == 1:
-        subprocess.Popen("python3 scaling.py", stdout=subprocess.PIPE, shell=True)
+        subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
 
     request_data = request.get_json(force=True)
 
@@ -173,7 +174,9 @@ def get_pid_of_all_slaves(containers):
 
 
 def start_zoo_watch():
-    subprocess.Popen(["python3", "zoo_watch.py"])
+    print("Starting zoo watch", file=sys.stdout)
+    watch = ZooWatch(zookeeper_hostname)
+    watch.start()
 
 
 if __name__ == "__main__":
