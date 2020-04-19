@@ -34,7 +34,7 @@ services:
   slave1:
     build: ./worker
     image: slave:latest
-    command: sh -c "sleep 20 && python3 -u worker.py"
+    command: sh -c "sleep 25 && python3 -u worker.py"
     container_name: slave1
     volumes:
     - ./worker:/worker

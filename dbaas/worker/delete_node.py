@@ -5,7 +5,7 @@ import sys
 import os
 
 logging.basicConfig()
-node = "/" + os.environ["WORKER_TYPE"] + "/" + os.environ["NODE_NAME"]
+node = "/worker/" + os.environ["NODE_NAME"]
 zk = KazooClient(hosts=zookeeper_hostname)
 zk.start()
 

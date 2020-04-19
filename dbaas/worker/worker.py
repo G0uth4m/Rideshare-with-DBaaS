@@ -155,28 +155,23 @@ def convert_datetime_to_timestamp(k):
     return day + "-" + month + "-" + year + ":" + second + "-" + minute + "-" + hour
 
 
-def delete_node(zk, node):
-    zk.delete(node)
-
-
 def main():
     logging.basicConfig()
     zk = KazooClient(hosts=zookeeper_hostname)
     zk.start()
-    worker_type = "/" + os.environ["WORKER_TYPE"]
-    zk.ensure_path(worker_type)
-    node_name = worker_type + "/" + os.environ["NODE_NAME"]
+    zk.ensure_path("/worker")
+    node_name = "/worker/" + os.environ["NODE_NAME"]
     if not zk.exists(node_name):
         msg = "Creating node: " + node_name
         print(msg, file=sys.stdout)
         zk.create(node_name, msg.encode())
 
-    if worker_type == "/master":
+    if os.environ["WORKER_TYPE"] == "master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
         rpc_server.start()
     else:
         try:
-            if node_name != "/slave/slave1":
+            if node_name != "/worker/slave1":
                 print("[*] Cloning database from master ...", file=sys.stdout)
                 subprocess.call(
                     "mongodump --host mongomaster --port 27017 --db rideshare && mongorestore --host " + os.environ[

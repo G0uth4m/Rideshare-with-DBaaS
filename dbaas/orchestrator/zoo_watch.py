@@ -16,47 +16,40 @@ class ZooWatch:
         self.zk.start()
         self.temp = []
 
-    def callback_slave(self, event):
+    def callback_worker(self, event):
         print(event, file=sys.stdout)
-        slaves = self.zk.get_children("/slave")
-        print(slaves, self.temp)
-        if len(slaves) < len(self.temp):
-            for i in slaves:
+        workers = self.zk.get_children("/worker")
+        print(workers, self.temp)
+        if len(workers) < len(self.temp):
+            for i in workers:
                 self.temp.remove(i)
 
-            print("Node deleted: " + self.temp[0], file=sys.stdout)
-            print("Current slaves: " + str(slaves), file=sys.stdout)
-            random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
-            self.bring_up_new_worker_container(slave_name="slave" + random_name, db_name="mongoslave" + random_name)
+            print("[-] Node deleted: " + self.temp[0], file=sys.stdout)
+            print("[*] Current workers: " + str(workers), file=sys.stdout)
+            if "slave" in self.temp[0]:
+                random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+                self.bring_up_new_worker_container(slave_name="slave" + random_name, db_name="mongoslave" + random_name)
+            else:
+                print("[-] Master failed", file=sys.stdout)
+                # TODO: Master election and create new slave container
         else:
+            temp = workers.copy()
             for i in self.temp:
-                slaves.remove(i)
-            print("Node added: " + slaves[0], file=sys.stdout)
-            print("Current slaves: " + str(slaves), file=sys.stdout)
-
-    def callback_master(self, event):
-        print(event, file=sys.stdout)
-        master = self.zk.get_children("/master")
-        if master:
-            print("Master added: " + master[0], file=sys.stdout)
-        else:
-            print("Master failed", file=sys.stdout)
-            print(event)
-        # TODO: Master election and create new slave container
+                workers.remove(i)
+            print("[+] Node added: " + workers[0], file=sys.stdout)
+            print("[*] Current workers: " + str(temp), file=sys.stdout)
 
     def start(self):
         while True:
             try:
-                self.temp = self.zk.get_children("/slave")
-                slaves = self.zk.get_children("/slave", watch=self.callback_slave)
+                self.temp = self.zk.get_children("/worker")
                 time.sleep(10)
-                master = self.zk.get_children("/master", watch=self.callback_master)
-                time.sleep(10)
+                self.zk.get_children("/worker", watch=self.callback_worker)
             except Exception as e:
                 pass
 
     def bring_up_new_worker_container(self, slave_name, db_name):
-        print("[+] Starting container: " + db_name)
+        print("[+] Starting(A) container: " + db_name, file=sys.stdout)
         client.containers.run(
             image="mongo:3.6.3",
             network="ubuntu_backend",
@@ -68,7 +61,7 @@ class ZooWatch:
 
         time.sleep(5)
 
-        print("[+] Starting container: " + slave_name)
+        print("[+] Starting(A) container: " + slave_name, file=sys.stdout)
         client.containers.run(
             image="master:latest",
             command="python3 -u worker.py",

@@ -5,9 +5,11 @@ import math
 import random
 import string
 import time
+import sys
 
 
 def bring_up_new_worker_container(self, slave_name, db_name):
+    print("[+] Starting(S) container: " + db_name, file=sys.stdout)
     client.containers.run(
         image="mongo:3.6.3",
         network="ubuntu_backend",
@@ -19,6 +21,7 @@ def bring_up_new_worker_container(self, slave_name, db_name):
 
     time.sleep(5)
 
+    print("[+] Starting(S) container: " + slave_name, file=sys.stdout)
     client.containers.run(
         image="master:latest",
         command="python3 -u worker.py",
