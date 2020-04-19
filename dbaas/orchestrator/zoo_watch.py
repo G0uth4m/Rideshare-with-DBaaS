@@ -3,9 +3,11 @@ import logging
 from dbaas.orchestrator.config import client
 import time
 import sys
+import random
+import string
 
 
-# sudo docker rm $(sudo docker ps -a | grep "zoo\|rabb\|slave" | awk '{print $1}')
+# sudo docker rm $(sudo docker ps -a | awk '{print $1}')
 
 class ZooWatch:
     def __init__(self, zookeeper_hostname):
@@ -24,7 +26,8 @@ class ZooWatch:
 
             print("Node deleted: " + self.temp[0], file=sys.stdout)
             print("Current slaves: " + str(slaves), file=sys.stdout)
-            self.bring_up_new_worker_container(slave_name=self.temp[0], db_name="mongo" + self.temp[0])
+            random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            self.bring_up_new_worker_container(slave_name="slave" + random_name, db_name="mongoslave" + random_name)
         else:
             for i in self.temp:
                 slaves.remove(i)
@@ -46,24 +49,26 @@ class ZooWatch:
             try:
                 self.temp = self.zk.get_children("/slave")
                 slaves = self.zk.get_children("/slave", watch=self.callback_slave)
-                time.sleep(1)
+                time.sleep(10)
                 master = self.zk.get_children("/master", watch=self.callback_master)
-                time.sleep(5)
+                time.sleep(10)
             except Exception as e:
                 pass
 
     def bring_up_new_worker_container(self, slave_name, db_name):
-        try:
-            slave = client.containers.get(slave_name)
-            db = client.containers.get(db_name)
-            while slave in client.containers.list() and db in client.containers.list():
-                print("[*] Waiting for containers to stop", file=sys.stdout)
-                time.sleep(1)
-            slave.remove()
-            db.remove()
-        except Exception as e:
-            print(e, file=sys.stdout)
+        print("[+] Starting container: " + db_name)
+        client.containers.run(
+            image="mongo:3.6.3",
+            network="ubuntu_backend",
+            name=db_name,
+            hostname=db_name,
+            detach=True,
+            remove=True
+        )
 
+        time.sleep(5)
+
+        print("[+] Starting container: " + slave_name)
         client.containers.run(
             image="master:latest",
             command="python3 -u worker.py",
@@ -72,13 +77,6 @@ class ZooWatch:
             hostname=slave_name,
             name=slave_name,
             network="ubuntu_backend",
-            detach=True
-        )
-
-        client.containers.run(
-            image="mongo:latest",
-            network="ubuntu_backend",
-            name=db_name,
-            hostname=db_name,
-            detach=True
+            detach=True,
+            remove=True
         )

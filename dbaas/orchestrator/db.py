@@ -24,12 +24,12 @@ def write_to_db():
 
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
-    increment_requests_count()
-    global c
-    c += 1
-
-    if c == 1:
-        subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
+    # increment_requests_count()
+    # global c
+    # c += 1
+    #
+    # if c == 1:
+    #     subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
 
     request_data = request.get_json(force=True)
 

@@ -2,20 +2,22 @@ import schedule
 from dbaas.orchestrator.config import client
 from dbaas.orchestrator.db import get_requests_count
 import math
-import sys
+import random
+import string
+import time
 
 
-def bring_up_new_worker_container(slave_name, db_name):
-    try:
-        slave = client.containers.get(slave_name)
-        db = client.containers.get(db_name)
-        while slave in client.containers.list() and db in client.containers.list():
-            print("[*] Waiting for containers to stop", file=sys.stdout)
-            time.sleep(1)
-        slave.remove()
-        db.remove()
-    except Exception as e:
-        print(e, file=sys.stdout)
+def bring_up_new_worker_container(self, slave_name, db_name):
+    client.containers.run(
+        image="mongo:3.6.3",
+        network="ubuntu_backend",
+        name=db_name,
+        hostname=db_name,
+        detach=True,
+        remove=True
+    )
+
+    time.sleep(5)
 
     client.containers.run(
         image="master:latest",
@@ -25,15 +27,8 @@ def bring_up_new_worker_container(slave_name, db_name):
         hostname=slave_name,
         name=slave_name,
         network="ubuntu_backend",
-        detach=True
-    )
-
-    client.containers.run(
-        image="mongo:latest",
-        network="ubuntu_backend",
-        name=db_name,
-        hostname=db_name,
-        detach=True
+        detach=True,
+        remove=True
     )
 
 
@@ -54,15 +49,16 @@ def start_scaling():
         # Scale out
         n = no_of_slaves_to_be_present - current_slaves//2
         for i in range(n):
-            slave_name = "slave" + str((current_slaves//2) + i + 1)
+            random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            slave_name = "slave" + random_name
             db_name = "mongo" + slave_name
             bring_up_new_worker_container(slave_name=slave_name, db_name=db_name)
 
     elif current_slaves//2 > no_of_slaves_to_be_present:
         # Scale in
         n = current_slaves//2 - no_of_slaves_to_be_present
-        for i in range(n, 0, -1):
-            client.containers.get("slave" + str(i)).kill()
+        for i in range(n):
+            random.choice(client.containers.list()).remove()
 
     f = open("requests_count.txt", "w")
     f.write("0")

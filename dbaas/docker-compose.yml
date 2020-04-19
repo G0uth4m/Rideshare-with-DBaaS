@@ -50,7 +50,7 @@ services:
       - zoo
 
   mongoslave1:
-    image: mongo:latest
+    image: mongo:3.6.3
     container_name: mongoslave1
     networks:
       - backend
@@ -74,7 +74,7 @@ services:
       - zoo
 
   mongomaster:
-    image: mongo:latest
+    image: mongo:3.6.3
     container_name: mongomaster
     networks:
       - backend

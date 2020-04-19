@@ -170,27 +170,25 @@ def main():
         msg = "Creating node: " + node_name
         print(msg, file=sys.stdout)
         zk.create(node_name, msg.encode())
-    f = open("node_name.txt", "w")
-    f.write(node_name)
-    f.close()
-
-    try:
-        subprocess.call(
-            "mongodump --host mongomaster --port 27017 --db rideshare && mongorestore --host " + os.environ['DB_HOSTNAME'] + " --port 27017 --db rideshare",
-            stdout=sys.stdout,
-            stderr=sys.stdout,
-            shell=True
-        )
-    except Exception as e:
-        print(e, file=sys.stdout)
 
     if worker_type == "/master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
-        print("[*] Listening on writeQ", file=sys.stdout)
         rpc_server.start()
     else:
+        try:
+            if node_name != "/slave/slave1":
+                print("[*] Cloning database from master ...", file=sys.stdout)
+                subprocess.call(
+                    "mongodump --host mongomaster --port 27017 --db rideshare && mongorestore --host " + os.environ[
+                        'DB_HOSTNAME'] + " --port 27017",
+                    stdout=sys.stdout,
+                    stderr=sys.stdout,
+                    shell=True
+                )
+        except Exception as e:
+            print(e, file=sys.stdout)
+
         rpc_server = RpcServer(queue_name='readQ', func=readdb, is_master=False, func2=writedb)
-        print("[*] Listening on readQ", file=sys.stdout)
         rpc_server.start()
 
 

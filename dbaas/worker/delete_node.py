@@ -2,12 +2,10 @@ import logging
 from kazoo.client import KazooClient
 from dbaas.worker.config import zookeeper_hostname
 import sys
+import os
 
 logging.basicConfig()
-
-f = open("node_name.txt")
-node = f.read()
-
+node = "/" + os.environ["WORKER_TYPE"] + "/" + os.environ["NODE_NAME"]
 zk = KazooClient(hosts=zookeeper_hostname)
 zk.start()
 
