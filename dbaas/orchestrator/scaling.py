@@ -19,7 +19,7 @@ def bring_up_new_worker_container(self, slave_name, db_name):
         remove=True
     )
 
-    time.sleep(5)
+    time.sleep(2)
 
     print("[+] Starting(S) container: " + slave_name, file=sys.stdout)
     client.containers.run(
@@ -37,6 +37,10 @@ def bring_up_new_worker_container(self, slave_name, db_name):
 
 def start_scaling():
     current_count = get_requests_count()
+    print("[*] Resetting requests count", file=sys.stdout)
+    f = open("requests_count.txt", "w")
+    f.write("0")
+    f.close()
     containers = client.containers.list()
     current_slaves = 0
     for i in containers:
@@ -49,8 +53,8 @@ def start_scaling():
         no_of_slaves_to_be_present = (int(math.ceil(current_count/20.0))*20)//20
 
     if current_slaves//2 < no_of_slaves_to_be_present:
-        # Scale out
         n = no_of_slaves_to_be_present - current_slaves//2
+        print("[*] Scaling out - starting " + str(n) + "containers", file=sys.stdout)
         for i in range(n):
             random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
             slave_name = "slave" + random_name
@@ -58,18 +62,16 @@ def start_scaling():
             bring_up_new_worker_container(slave_name=slave_name, db_name=db_name)
 
     elif current_slaves//2 > no_of_slaves_to_be_present:
-        # Scale in
         n = current_slaves//2 - no_of_slaves_to_be_present
+        print("[*] Scaling in - removing " + str(n) + "containers", file=sys.stdout)
         for i in range(n):
-            random.choice(client.containers.list()).remove()
-
-    f = open("requests_count.txt", "w")
-    f.write("0")
-    f.close()
+            cnt = random.choice(client.containers.list())
+            print("[-] Removing container: " + cnt.name, file=sys.stdout)
+            cnt.kill()
 
 
 schedule.every(2).minutes.do(start_scaling)
 
 while 1:
-    schedule.run_all()
+    schedule.run_pending()
 

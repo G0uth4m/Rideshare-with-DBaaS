@@ -5,6 +5,7 @@ import time
 import sys
 import random
 import string
+import threading
 
 
 # sudo docker rm $(sudo docker ps -a | awk '{print $1}')
@@ -15,8 +16,10 @@ class ZooWatch:
         self.zk = KazooClient(hosts=zookeeper_hostname)
         self.zk.start()
         self.temp = []
+        self.lock = threading.Lock()
 
     def callback_worker(self, event):
+        self.lock.acquire()
         print(event, file=sys.stdout)
         workers = self.zk.get_children("/worker")
         print(workers, self.temp)
@@ -38,6 +41,7 @@ class ZooWatch:
                 workers.remove(i)
             print("[+] Node added: " + workers[0], file=sys.stdout)
             print("[*] Current workers: " + str(temp), file=sys.stdout)
+        self.lock.release()
 
     def start(self):
         while True:

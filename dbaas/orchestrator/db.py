@@ -3,9 +3,9 @@ from flask import Flask, request, Response, jsonify
 from dbaas.orchestrator.rpc_client import RpcClient
 from dbaas.orchestrator.config import client, apiClient, zookeeper_hostname
 import sys
-import subprocess
-import threading
+import multiprocessing
 from dbaas.orchestrator.zoo_watch import ZooWatch
+import subprocess
 
 app = Flask(__name__)
 
@@ -24,12 +24,14 @@ def write_to_db():
 
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
-    # increment_requests_count()
-    # global c
-    # c += 1
-    #
-    # if c == 1:
-    #     subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
+    increment_requests_count()
+    print("[*] No. of requests until now: " + str(get_requests_count()), file=sys.stdout)
+    global c
+    c += 1
+
+    if c == 1:
+        print("[*] Running scalability script ...", file=sys.stdout)
+        subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
 
     request_data = request.get_json(force=True)
 
@@ -180,7 +182,7 @@ def start_zoo_watch():
 
 
 if __name__ == "__main__":
-    p1 = threading.Thread(target=start_zoo_watch)
+    p1 = multiprocessing.Process(target=start_zoo_watch)
     p1.start()
     c = 0
     app.run(debug=True, host="0.0.0.0", port=80)
