@@ -176,7 +176,6 @@ def get_pid_of_all_slaves(containers):
 
 
 def start_zoo_watch():
-    print("Starting zoo watch", file=sys.stdout)
     watch = ZooWatch(zookeeper_hostname)
     watch.start()
 
