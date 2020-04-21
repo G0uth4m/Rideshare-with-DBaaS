@@ -15,7 +15,7 @@ def bring_up_new_worker_container(slave_name, db_name):
         name=db_name,
         hostname=db_name,
         detach=True,
-        remove=True
+        remove=False
     )
 
     time.sleep(5)
@@ -30,7 +30,7 @@ def bring_up_new_worker_container(slave_name, db_name):
         name=slave_name,
         network="ubuntu_backend",
         detach=True,
-        remove=True
+        remove=False
     )
 
 

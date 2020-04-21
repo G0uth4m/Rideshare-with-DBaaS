@@ -1,11 +1,18 @@
 import schedule
 from dbaas.orchestrator.config import client
-from dbaas.orchestrator.db import get_requests_count
 import math
 import random
 import string
 import time
 import sys
+import socket
+
+
+def get_requests_count():
+    f = open("requests_count.txt", "r")
+    count = int(f.read())
+    f.close()
+    return count
 
 
 def bring_up_new_worker_container(self, slave_name, db_name):
@@ -54,7 +61,7 @@ def start_scaling():
 
     if current_slaves//2 < no_of_slaves_to_be_present:
         n = no_of_slaves_to_be_present - current_slaves//2
-        print("[*] Scaling out - starting " + str(n) + "containers", file=sys.stdout)
+        print("[*] Scaling out - starting " + str(n) + " containers", file=sys.stdout)
         for i in range(n):
             random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
             slave_name = "slave" + random_name
@@ -63,13 +70,23 @@ def start_scaling():
 
     elif current_slaves//2 > no_of_slaves_to_be_present:
         n = current_slaves//2 - no_of_slaves_to_be_present
-        print("[*] Scaling in - removing " + str(n) + "containers", file=sys.stdout)
+        print("[*] Scaling in - removing " + str(n) + " containers", file=sys.stdout)
         for i in range(n):
             cnt = random.choice(client.containers.list())
             print("[-] Removing container: " + cnt.name, file=sys.stdout)
             cnt.kill()
+    else:
+        print("[*] No scaling required", file=sys.stdout)
 
 
+s = socket.socket()
+s.bind(("", 12345))
+s.listen(2)
+c, addr = s.accept()
+print(c.recv(1024).decode(), file=sys.stdout)
+c.close()
+
+print("[*] Scaling started", file=sys.stdout)
 schedule.every(2).minutes.do(start_scaling)
 
 while 1:

@@ -5,7 +5,7 @@ from dbaas.orchestrator.config import client, apiClient, zookeeper_hostname
 import sys
 import multiprocessing
 from dbaas.orchestrator.zoo_watch import ZooWatch
-import subprocess
+import socket
 
 app = Flask(__name__)
 
@@ -25,13 +25,13 @@ def write_to_db():
 @app.route('/api/v1/db/read', methods=["POST"])
 def read_from_db():
     increment_requests_count()
-    print("[*] No. of requests until now: " + str(get_requests_count()), file=sys.stdout)
     global c
     c += 1
-
     if c == 1:
-        print("[*] Running scalability script ...", file=sys.stdout)
-        subprocess.Popen("python3 scaling.py", stdout=sys.stdout, shell=True)
+        s = socket.socket()
+        s.connect(("127.0.0.1", 12345))
+        print("[*] Sending commands to start scaling", file=sys.stdout)
+        s.send("Start scaling")
 
     request_data = request.get_json(force=True)
 

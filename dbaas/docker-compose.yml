@@ -12,6 +12,7 @@ services:
       - ./orchestrator:/orchestrator
     networks:
       - backend
+    entrypoint: ["python3", "scaling.py"]
     depends_on:
       - rmq
       - zoo
