@@ -4,7 +4,7 @@ services:
   orchestrator:
     build: ./orchestrator
     image: orchestrator:latest
-    command: python3 -u db.py
+    command: sh -c "sleep 15 && python3 -u db.py"
     container_name: orchestrator
     ports:
       - "80:80"
@@ -12,10 +12,19 @@ services:
       - ./orchestrator:/orchestrator
     networks:
       - backend
-    entrypoint: ["python3", "scaling.py"]
     depends_on:
       - rmq
       - zoo
+
+  scalability:
+    build: ./scalability
+    image: scalability:latest
+    command: python3 -u scaling.py
+    container_name: scalability
+    volumes:
+    - ./scalability:/scalability
+    networks:
+      - backend
 
   rmq:
     image: rabbitmq:latest
@@ -45,7 +54,7 @@ services:
       - WORKER_TYPE=slave
       - DB_HOSTNAME=mongoslave1
       - NODE_NAME=slave1
-    entrypoint: ["sh", "cleanup.sh"]
+    entrypoint: ["sh", "trap.sh"]
     depends_on:
       - rmq
       - zoo
@@ -69,7 +78,7 @@ services:
       - WORKER_TYPE=master
       - DB_HOSTNAME=mongomaster
       - NODE_NAME=master
-    entrypoint: ["sh", "cleanup.sh"]
+    entrypoint: ["sh", "trap.sh"]
     depends_on:
       - rmq
       - zoo

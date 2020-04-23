@@ -5,7 +5,8 @@ from dbaas.orchestrator.config import client, apiClient, zookeeper_hostname
 import sys
 import multiprocessing
 from dbaas.orchestrator.zoo_watch import ZooWatch
-import socket
+import subprocess
+from dbaas.orchestrator.delete_node import start_listener
 
 app = Flask(__name__)
 
@@ -28,10 +29,7 @@ def read_from_db():
     global c
     c += 1
     if c == 1:
-        s = socket.socket()
-        s.connect(("127.0.0.1", 12345))
-        print("[*] Sending commands to start scaling", file=sys.stdout)
-        s.send("Start scaling")
+        subprocess.Popen("python3 scaling.py", shell=True)
 
     request_data = request.get_json(force=True)
 
@@ -98,9 +96,9 @@ def write_file():
 def kill_master():
     try:
         master = client.containers.get("master")
-        master.stop()
+        master.kill()
         master_db = client.containers.get("mongomaster")
-        master_db.stop()
+        master_db.kill()
         return Response(status=200)
     except:
         return Response(status=500)
@@ -118,11 +116,11 @@ def kill_slave():
         for i in containers:
             if apiClient.inspect_container(i.name)["State"]["Pid"] == max_pid:
                 selected_slave = i.name
-                i.stop()
+                i.kill()
                 break
 
         slave_db = client.containers.get("mongo" + selected_slave)
-        slave_db.stop()
+        slave_db.kill()
         return Response(status=200)
 
     except Exception as e:
@@ -183,5 +181,7 @@ def start_zoo_watch():
 if __name__ == "__main__":
     p1 = multiprocessing.Process(target=start_zoo_watch)
     p1.start()
+    p2 = multiprocessing.Process(target=start_listener, args=(client, zookeeper_hostname,))
+    p2.start()
     c = 0
     app.run(debug=True, host="0.0.0.0", port=80)

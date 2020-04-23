@@ -2,7 +2,7 @@
 
 #Define cleanup procedure
 cleanup() {
-    python3 delete_node.py
+    python3 cleanup.py
 }
 
 #Trap SIGTERM
