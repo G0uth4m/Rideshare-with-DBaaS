@@ -25,7 +25,7 @@ def bring_up_new_worker_container(slave_name, db_name):
         image="master:latest",
         command="python3 -u worker.py",
         environment={"DB_HOSTNAME": db_name, "WORKER_TYPE": "slave", "NODE_NAME": slave_name},
-        entrypoint=["sh", "cleanup.sh"],
+        entrypoint=["sh", "trap.sh"],
         hostname=slave_name,
         name=slave_name,
         network="ubuntu_backend",

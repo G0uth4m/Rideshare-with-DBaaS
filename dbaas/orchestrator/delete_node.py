@@ -13,6 +13,7 @@ def start_listener(client, zookeeper_hostname):
         killed_containers = client.containers.list(all=True, filters={"exited": "137"})
         for i in killed_containers:
             print("Removing killed container: " + i.name, file=sys.stdout)
-            zk.delete("/worker/" + i.name)
+            if "mongo" not in i.name:
+                zk.delete("/worker/" + i.name)
             i.remove()
         time.sleep(3)

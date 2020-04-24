@@ -5,6 +5,7 @@ import random
 import string
 import time
 import sys
+import threading
 
 
 def get_requests_count():
@@ -32,7 +33,7 @@ def bring_up_new_worker_container(slave_name, db_name):
         image="master:latest",
         command="python3 -u worker.py",
         environment={"DB_HOSTNAME": db_name, "WORKER_TYPE": "slave", "NODE_NAME": slave_name},
-        entrypoint=["sh", "cleanup.sh"],
+        entrypoint=["sh", "trap.sh"],
         hostname=slave_name,
         name=slave_name,
         network="ubuntu_backend",
@@ -80,9 +81,13 @@ def start_scaling():
                     temp.append(i)
             cnt = random.choice(temp)
             print("[-] Removing db: " + "mongo" + cnt.name, file=sys.stdout)
-            client.containers.get("mongo" + cnt.name).stop()
+            db = client.containers.get("mongo" + cnt.name)
+            db.stop()
+            db.remove()
+
             print("[-] Removing container: " + cnt.name, file=sys.stdout)
             cnt.stop()
+            cnt.remove()
 
     else:
         print("[*] No scaling required", file=sys.stdout)
@@ -93,8 +98,13 @@ def start_scaling():
     print("[+] Round ended\n", file=sys.stdout)
 
 
+def scaling_threaded():
+    t1 = threading.Thread(target=start_scaling)
+    t1.start()
+
+
 print("[*] Scaling started", file=sys.stdout)
-schedule.every(2).minutes.do(start_scaling)
+schedule.every(2).minutes.do(scaling_threaded)
 
 while 1:
     schedule.run_pending()

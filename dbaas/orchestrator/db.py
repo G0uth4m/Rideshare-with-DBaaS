@@ -184,4 +184,4 @@ if __name__ == "__main__":
     p2 = multiprocessing.Process(target=start_listener, args=(client, zookeeper_hostname,))
     p2.start()
     c = 0
-    app.run(debug=True, host="0.0.0.0", port=80)
+    app.run(debug=True, host="0.0.0.0", port=80, use_reloader=False)
