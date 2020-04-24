@@ -10,6 +10,7 @@
       <w>mongomaster</w>
       <w>mongorestore</w>
       <w>mongoslave</w>
+      <w>pids</w>
       <w>rabbitmq</w>
       <w>readdb</w>
       <w>rideshare</w>

@@ -1,10 +1,11 @@
 from kazoo.client import KazooClient
 import logging
-from dbaas.orchestrator.config import client
+from dbaas.orchestrator.config import client, apiClient
 import time
 import sys
 import random
 import string
+import socket
 
 
 def bring_up_new_worker_container(slave_name, db_name):
@@ -70,6 +71,15 @@ class ZooWatch:
                                                   db_name="mongoslave" + random_name)
                 else:
                     print("[-] Master failed", file=sys.stdout)
+                    slave_pids = {}
+                    for i in client.containers.list():
+                        if "slave" in i.name and "mongo" not in i.name:
+                            slave_pids[apiClient.inspect_container(i.name)["State"]["Pid"]] = i.name
+                            new_leader = slave_pids[min(slave_pids.keys())]
+                            s = socket.socket()
+                            s.connect((new_leader, 23456))
+                            s.send("You are now the master".encode())
+                            s.close()
                     # TODO: Master election and create new slave container
 
             elif len(workers) > len(self.temp):
