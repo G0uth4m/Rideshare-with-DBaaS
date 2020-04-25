@@ -66,7 +66,7 @@ class ZooWatch:
                 print("[-] Node deleted: " + node, file=sys.stdout)
                 print("[*] Current workers: " + str(workers), file=sys.stdout)
                 if "slave" in node:
-                    random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+                    random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
                     bring_up_new_worker_container(slave_name="slave" + random_name,
                                                   db_name="mongoslave" + random_name)
                 else:

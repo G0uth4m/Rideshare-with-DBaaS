@@ -8,6 +8,8 @@ from kazoo.client import KazooClient
 import subprocess
 import multiprocessing
 import socket
+import time
+import docker
 
 
 def writedb(request_data):
@@ -162,7 +164,7 @@ def slave_rpc_server():
     rpc_server.start()
 
 
-def become_master(slave_process, zk, old_name):
+def become_master(slave_process, old_name):
     s = socket.socket()
     s.bind(("", 23456))
     print("[*] Listening for command from orchestrator to become master ...", file=sys.stdout)
@@ -174,6 +176,14 @@ def become_master(slave_process, zk, old_name):
     os.environ["WORKER_TYPE"] = "master"
     os.environ["NODE_NAME"] = "master"
 
+    client = docker.DockerClient(base_url="tcp://172.17.0.1:4444")
+    cnt = client.containers.get(old_name)
+    cnt.rename("master")
+
+    logging.basicConfig()
+    zk = KazooClient(hosts=zookeeper_hostname)
+    zk.start()
+
     node_name = "/worker/" + os.environ["NODE_NAME"]
     if not zk.exists(node_name):
         msg = "Creating node: " + node_name
@@ -181,6 +191,7 @@ def become_master(slave_process, zk, old_name):
         db_name = os.environ["DB_HOSTNAME"]
         zk.create(node_name, db_name.encode())
 
+    time.sleep(3)
     zk.delete(old_name)
 
     rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
@@ -218,7 +229,7 @@ def main():
             print(e, file=sys.stdout)
 
         p1 = multiprocessing.Process(target=slave_rpc_server)
-        p2 = multiprocessing.Process(target=become_master, args=(p1, zk, node_name,))
+        p2 = multiprocessing.Process(target=become_master, args=(p1, node_name,))
         p1.start()
         p2.start()
 

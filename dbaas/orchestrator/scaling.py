@@ -66,7 +66,7 @@ def start_scaling():
         n = no_of_slaves_to_be_present - current_slaves
         print("[*] Scaling out - starting " + str(n) + " containers", file=sys.stdout)
         for i in range(n):
-            random_name = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
             slave_name = "slave" + random_name
             db_name = "mongo" + slave_name
             bring_up_new_worker_container(slave_name=slave_name, db_name=db_name)

@@ -16,16 +16,6 @@ services:
       - rmq
       - zoo
 
-  scalability:
-    build: ./scalability
-    image: scalability:latest
-    command: python3 -u scaling.py
-    container_name: scalability
-    volumes:
-    - ./scalability:/scalability
-    networks:
-      - backend
-
   rmq:
     image: rabbitmq:latest
     networks:
