@@ -95,11 +95,12 @@ def write_file():
 @app.route('/api/v1/crash/master', methods=["DELETE"])
 def kill_master():
     try:
+        master_pid = apiClient.inspect_container("master")["State"]["Pid"]
         master = client.containers.get("master")
         master.kill()
         master_db = client.containers.get("mongomaster")
         master_db.kill()
-        return Response(status=200)
+        return Response(status=200, response=jsonify([master_pid]))
     except:
         return Response(status=500)
 
@@ -121,7 +122,7 @@ def kill_slave():
 
         slave_db = client.containers.get("mongo" + selected_slave)
         slave_db.kill()
-        return Response(status=200)
+        return Response(status=200, response=jsonify([max_pid]))
 
     except Exception as e:
         return Response(status=500)

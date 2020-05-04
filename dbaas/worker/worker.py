@@ -192,7 +192,7 @@ def become_master(slave_process, old_name):
         zk.create(node_name, db_name.encode())
 
     time.sleep(3)
-    zk.delete(old_name)
+    zk.delete("/worker/" + old_name)
 
     rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
     rpc_server.start()
@@ -216,8 +216,8 @@ def main():
     else:
         try:
             if node_name != "/worker/slave1":
-                print("[*] Cloning database from master ...", file=sys.stdout)
                 master_db = zk.get("/worker/master")[0].decode()
+                print("[*] Cloning database from master db: " + master_db, file=sys.stdout)
                 subprocess.call(
                     "mongodump --host " + master_db + " --port 27017 --db rideshare && mongorestore --host " + os.environ[
                         'DB_HOSTNAME'] + " --port 27017",
@@ -228,8 +228,9 @@ def main():
         except Exception as e:
             print(e, file=sys.stdout)
 
+        old_name = os.environ["NODE_NAME"]
         p1 = multiprocessing.Process(target=slave_rpc_server)
-        p2 = multiprocessing.Process(target=become_master, args=(p1, node_name,))
+        p2 = multiprocessing.Process(target=become_master, args=(p1, old_name,))
         p1.start()
         p2.start()
 

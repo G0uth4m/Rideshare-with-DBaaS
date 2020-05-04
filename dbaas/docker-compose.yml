@@ -48,6 +48,7 @@ services:
     depends_on:
       - rmq
       - zoo
+      - naster
 
   mongoslave1:
     image: mongo:3.6.3

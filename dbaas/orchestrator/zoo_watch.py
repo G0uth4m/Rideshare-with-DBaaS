@@ -23,7 +23,7 @@ def bring_up_new_worker_container(slave_name, db_name):
 
     print("[+] Starting(A) container: " + slave_name, file=sys.stdout)
     client.containers.run(
-        image="master:latest",
+        image="slave:latest",
         command="python3 -u worker.py",
         environment={"DB_HOSTNAME": db_name, "WORKER_TYPE": "slave", "NODE_NAME": slave_name},
         entrypoint=["sh", "trap.sh"],
@@ -80,7 +80,6 @@ class ZooWatch:
                             s.connect((new_leader, 23456))
                             s.send("You are now the master".encode())
                             s.close()
-                    # TODO: Master election and create new slave container
 
             elif len(workers) > len(self.temp):
                 print("[+] Node added: " + listdiff(self.temp, workers), file=sys.stdout)

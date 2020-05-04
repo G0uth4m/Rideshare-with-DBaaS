@@ -30,7 +30,7 @@ def bring_up_new_worker_container(slave_name, db_name):
 
     print("[+] Starting(S) container: " + slave_name, file=sys.stdout)
     client.containers.run(
-        image="master:latest",
+        image="slave:latest",
         command="python3 -u worker.py",
         environment={"DB_HOSTNAME": db_name, "WORKER_TYPE": "slave", "NODE_NAME": slave_name},
         entrypoint=["sh", "trap.sh"],
