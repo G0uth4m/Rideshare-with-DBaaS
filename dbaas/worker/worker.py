@@ -189,7 +189,7 @@ def become_master(slave_process, old_name):
         msg = "Creating node: " + node_name
         print(msg, file=sys.stdout)
         db_name = os.environ["DB_HOSTNAME"]
-        zk.create(node_name, db_name.encode())
+        zk.create(node_name, db_name.encode(), ephemeral=True)
 
     time.sleep(3)
     zk.delete("/worker/" + old_name)
@@ -208,7 +208,7 @@ def main():
         msg = "Creating node: " + node_name
         print(msg, file=sys.stdout)
         db_name = os.environ["DB_HOSTNAME"]
-        zk.create(node_name, db_name.encode())
+        zk.create(node_name, db_name.encode(), ephemeral=True)
 
     if os.environ["WORKER_TYPE"] == "master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)

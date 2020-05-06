@@ -6,7 +6,8 @@ import sys
 import multiprocessing
 from dbaas.orchestrator.zoo_watch import ZooWatch
 import subprocess
-from dbaas.orchestrator.delete_node import start_listener
+from kazoo.client import KazooClient
+import logging
 
 app = Flask(__name__)
 
@@ -98,9 +99,11 @@ def kill_master():
         master_pid = apiClient.inspect_container("master")["State"]["Pid"]
         master = client.containers.get("master")
         master.kill()
-        master_db = client.containers.get("mongomaster")
+        master_db_name = zk.get("/worker/master")[0].decode()
+        master_db = client.containers.get(master_db_name)
         master_db.kill()
-        return Response(status=200, response=jsonify([master_pid]))
+        res = [master_pid]
+        return jsonify(res)
     except:
         return Response(status=500)
 
@@ -122,7 +125,8 @@ def kill_slave():
 
         slave_db = client.containers.get("mongo" + selected_slave)
         slave_db.kill()
-        return Response(status=200, response=jsonify([max_pid]))
+        res = [max_pid]
+        return jsonify(res)
 
     except Exception as e:
         return Response(status=500)
@@ -182,7 +186,8 @@ def start_zoo_watch():
 if __name__ == "__main__":
     p1 = multiprocessing.Process(target=start_zoo_watch)
     p1.start()
-    p2 = multiprocessing.Process(target=start_listener, args=(client, zookeeper_hostname,))
-    p2.start()
     c = 0
+    logging.basicConfig()
+    zk = KazooClient(hosts=zookeeper_hostname)
+    zk.start()
     app.run(debug=True, host="0.0.0.0", port=80, use_reloader=False)

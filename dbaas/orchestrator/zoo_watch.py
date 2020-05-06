@@ -52,6 +52,7 @@ class ZooWatch:
         self.zk = KazooClient(hosts=zookeeper_hostname)
         self.zk.start()
         self.temp = []
+        self.master_db_name = "mongomaster"
 
     def start(self):
         print("[*] Starting zoo watch", file=sys.stdout)
@@ -66,11 +67,26 @@ class ZooWatch:
                 print("[-] Node deleted: " + node, file=sys.stdout)
                 print("[*] Current workers: " + str(workers), file=sys.stdout)
                 if "slave" in node:
-                    random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
-                    bring_up_new_worker_container(slave_name="slave" + random_name,
-                                                  db_name="mongoslave" + random_name)
+                    killed_containers = client.containers.list(all=True, filters={"exited": "137"})
+                    slave_cnt = client.containers.get(node)
+                    slave_db_cnt = client.containers.get("mongo" + node)
+                    if slave_cnt in killed_containers:
+                        slave_cnt.remove()
+                        slave_db_cnt.remove()
+                        random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
+                        bring_up_new_worker_container(
+                            slave_name="slave" + random_name,
+                            db_name="mongoslave" + random_name
+                        )
+                    else:
+                        print("[*] Scaling down - removing " + node)
+                        print("[*] Or newly elected master is deleting its old node")
                 else:
                     print("[-] Master failed", file=sys.stdout)
+                    master_cnt = client.containers.get("master")
+                    master_db_cnt = client.containers.get(self.master_db_name)
+                    master_cnt.remove()
+                    master_db_cnt.remove()
                     slave_pids = {}
                     for i in client.containers.list():
                         if "slave" in i.name and "mongo" not in i.name:
@@ -80,6 +96,13 @@ class ZooWatch:
                             s.connect((new_leader, 23456))
                             s.send("You are now the master".encode())
                             s.close()
+                            self.master_db_name = "mongo" + new_leader
+                    time.sleep(5)
+                    random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
+                    bring_up_new_worker_container(
+                        slave_name="slave" + random_name,
+                        db_name="mongoslave" + random_name
+                    )
 
             elif len(workers) > len(self.temp):
                 print("[+] Node added: " + listdiff(self.temp, workers), file=sys.stdout)
