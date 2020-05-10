@@ -1,6 +1,6 @@
 from kazoo.client import KazooClient
 import logging
-from dbaas.orchestrator.config import client, apiClient
+from dbaas.orchestrator.config import client
 import time
 import sys
 import random
@@ -67,10 +67,11 @@ class ZooWatch:
                 print("[-] Node deleted: " + node, file=sys.stdout)
                 print("[*] Current workers: " + str(workers), file=sys.stdout)
                 if "slave" in node:
-                    killed_containers = client.containers.list(all=True, filters={"exited": "137"})
-                    slave_cnt = client.containers.get(node)
-                    slave_db_cnt = client.containers.get("mongo" + node)
-                    if slave_cnt in killed_containers:
+                    killed_containers = [i.name for i in client.containers.list(all=True, filters={"exited": "137"})]
+
+                    if node in killed_containers:
+                        slave_cnt = client.containers.get(node)
+                        slave_db_cnt = client.containers.get("mongo" + node)
                         slave_cnt.remove()
                         slave_db_cnt.remove()
                         random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=7))
@@ -90,7 +91,7 @@ class ZooWatch:
                     slave_pids = {}
                     for i in client.containers.list():
                         if "slave" in i.name and "mongo" not in i.name:
-                            slave_pids[apiClient.inspect_container(i.name)["State"]["Pid"]] = i.name
+                            slave_pids[i.attrs["State"]["Pid"]] = i.name
                             new_leader = slave_pids[min(slave_pids.keys())]
                             s = socket.socket()
                             s.connect((new_leader, 23456))

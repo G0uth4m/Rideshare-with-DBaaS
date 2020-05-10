@@ -31,7 +31,7 @@ def create_ride():
         # print("Invalid timestamp")
         return Response(status=400)
 
-    if (source > len(areas) or destination > len(areas)) and (source < 1 or destination < 1):
+    if (source > len(areas) or destination > len(areas)) or (source < 1 or destination < 1):
         # print("Invalid source or destination")
         return Response(status=400)
 
@@ -76,7 +76,7 @@ def list_rides_between_src_and_dst():
         # print("Source and destination parameters must be integers")
         return Response(status=400)
 
-    if (source > len(areas) or destination > len(areas)) and (source < 1 or destination < 1):
+    if (source > len(areas) or destination > len(areas)) or (source < 1 or destination < 1):
         # print("Areas not found")
         return Response(status=400)
 

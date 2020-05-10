@@ -1,7 +1,7 @@
 import json
 from flask import Flask, request, Response, jsonify
 from dbaas.orchestrator.rpc_client import RpcClient
-from dbaas.orchestrator.config import client, apiClient, zookeeper_hostname
+from dbaas.orchestrator.config import client, zookeeper_hostname
 import sys
 import multiprocessing
 from dbaas.orchestrator.zoo_watch import ZooWatch
@@ -44,7 +44,7 @@ def read_from_db():
     return jsonify(res)
 
 
-@app.route('/api/v1/db/clear', methods=["DELETE"])
+@app.route('/api/v1/db/clear', methods=["POST"])
 def clear_db():
     query = {"clear": 1, "collections": ["rides", "users"]}
     rpc_client = RpcClient(routing_key='writeQ')
@@ -93,10 +93,10 @@ def write_file():
         return Response(status=400)
 
 
-@app.route('/api/v1/crash/master', methods=["DELETE"])
+@app.route('/api/v1/crash/master', methods=["POST"])
 def kill_master():
     try:
-        master_pid = apiClient.inspect_container("master")["State"]["Pid"]
+        master_pid = client.containers.get("master").attrs["State"]["Pid"]
         master = client.containers.get("master")
         master.kill()
         master_db_name = zk.get("/worker/master")[0].decode()
@@ -108,7 +108,7 @@ def kill_master():
         return Response(status=500)
 
 
-@app.route('/api/v1/crash/slave', methods=["DELETE"])
+@app.route('/api/v1/crash/slave', methods=["POST"])
 def kill_slave():
     try:
         containers = client.containers.list()
@@ -118,7 +118,7 @@ def kill_slave():
         selected_slave = ""
 
         for i in containers:
-            if apiClient.inspect_container(i.name)["State"]["Pid"] == max_pid:
+            if i.attrs["State"]["Pid"] == max_pid:
                 selected_slave = i.name
                 i.kill()
                 break
@@ -163,7 +163,7 @@ def get_pid_of_all_workers(containers):
     for i in containers:
         if "mongo" not in i.name and ("slave" in i.name or "master" in i.name):
             print(i.name, file=sys.stdout)
-            pid = apiClient.inspect_container(i.name)["State"]["Pid"]
+            pid = i.attrs["State"]["Pid"]
             res.append(pid)
     return res
 
@@ -173,7 +173,7 @@ def get_pid_of_all_slaves(containers):
     for i in containers:
         if "mongo" not in i.name and "slave" in i.name:
             print(i.name, file=sys.stdout)
-            pid = apiClient.inspect_container(i.name)["State"]["Pid"]
+            pid = i.attrs["State"]["Pid"]
             res.append(pid)
     return res
 
