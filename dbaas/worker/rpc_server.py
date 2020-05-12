@@ -1,6 +1,6 @@
 import pika
 import json
-from dbaas.worker.config import rabbitmq_hostname
+from config import rabbitmq_hostname
 import sys
 import threading
 

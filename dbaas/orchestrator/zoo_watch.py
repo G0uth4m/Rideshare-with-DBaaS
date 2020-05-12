@@ -1,6 +1,6 @@
 from kazoo.client import KazooClient
 import logging
-from dbaas.orchestrator.config import client
+from config import client
 import time
 import sys
 import random

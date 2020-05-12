@@ -1,7 +1,7 @@
 import pika
 import json
 import uuid
-from dbaas.worker.config import rabbitmq_hostname
+from config import rabbitmq_hostname
 import sys
 
 

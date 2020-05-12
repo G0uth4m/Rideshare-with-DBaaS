@@ -1,7 +1,7 @@
 import os
-from dbaas.worker.config import db, zookeeper_hostname
+from config import db, zookeeper_hostname
 from datetime import datetime
-from dbaas.worker.rpc_server import RpcServer
+from rpc_server import RpcServer
 import sys
 import logging
 from kazoo.client import KazooClient

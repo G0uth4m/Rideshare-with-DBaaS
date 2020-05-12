@@ -1,5 +1,5 @@
 from flask import Flask, request, Response, jsonify
-from rides.config import areas, dbaas, load_balancer, rides_dns_name
+from config import areas, dbaas, load_balancer, rides_dns_name
 import requests
 from datetime import datetime
 

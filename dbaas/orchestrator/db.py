@@ -1,10 +1,10 @@
 import json
 from flask import Flask, request, Response, jsonify
-from dbaas.orchestrator.rpc_client import RpcClient
-from dbaas.orchestrator.config import client, zookeeper_hostname
+from rpc_client import RpcClient
+from config import client, zookeeper_hostname
 import sys
 import multiprocessing
-from dbaas.orchestrator.zoo_watch import ZooWatch
+from zoo_watch import ZooWatch
 import subprocess
 from kazoo.client import KazooClient
 import logging

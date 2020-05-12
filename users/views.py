@@ -1,5 +1,5 @@
 from flask import Flask, request, Response, jsonify
-from users.config import dbaas
+from config import dbaas
 import requests
 import re
 

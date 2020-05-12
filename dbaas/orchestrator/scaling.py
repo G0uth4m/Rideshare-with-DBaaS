@@ -1,5 +1,5 @@
 import schedule
-from dbaas.orchestrator.config import client
+from config import client
 import math
 import random
 import string
