@@ -2,7 +2,7 @@
 Cloud Computing Project
 
 ## Cloud Deployment
-Create 3 EC2 instances - rides, users and dbaas\
+Launch 3 EC2 instances - rides, users and dbaas\
 Install docker in all of them
 ```
 $ sudo apt update
