@@ -105,6 +105,7 @@ def get_details_of_ride_or_join_ride_or_delete_ride(rideId):
     except:
         return Response(status=400)
 
+    # Get details of ride
     if request.method == "GET":
         post_data = {"table": "rides",
                      "columns": ["rideId", "created_by", "users", "timestamp", "source", "destination"],
@@ -116,6 +117,7 @@ def get_details_of_ride_or_join_ride_or_delete_ride(rideId):
         del res["_id"]
         return jsonify(res)
 
+    # Join a user to a ride
     elif request.method == "POST":
         username = request.get_json(force=True)["username"]
         if not isUserPresent(username):
@@ -129,6 +131,7 @@ def get_details_of_ride_or_join_ride_or_delete_ride(rideId):
             return Response(status=400)
         return jsonify({})
 
+    # Delete a ride
     elif request.method == "DELETE":
         post_data = {'column': 'rideId', 'delete': int(rideId), 'table': 'rides'}
         response = requests.post('http://' + dbaas + '/api/v1/db/write', json=post_data)
@@ -160,11 +163,21 @@ def requests_count():
 
 
 def isUserPresent(username):
+    """
+    Request the users flask app to check if the given user is present in the database
+    :param username: Username to check
+    :return: 'boolean' - True if present, False if absent
+    """
     response = requests.get('http://' + load_balancer + '/api/v1/users', headers={"Origin": rides_dns_name})
     return response.status_code != 400 and username in response.json()
 
 
 def convert_datetime_to_timestamp(k):
+    """
+    Convert 'datetime.datetime' object to a string
+    :param k: 'datetime.datetime' object
+    :return: converted string
+    """
     day = str(k.day) if len(str(k.day)) == 2 else "0" + str(k.day)
     month = str(k.month) if len(str(k.month)) == 2 else "0" + str(k.month)
     year = str(k.year)
@@ -175,6 +188,11 @@ def convert_datetime_to_timestamp(k):
 
 
 def convert_timestamp_to_datetime(time_stamp):
+    """
+    Convert string(time_stamp) to a 'datetime.datetime' object
+    :param time_stamp: string represent the date
+    :return: 'datetime.datetime' object
+    """
     day = int(time_stamp[0:2])
     month = int(time_stamp[3:5])
     year = int(time_stamp[6:10])

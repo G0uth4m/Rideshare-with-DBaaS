@@ -16,6 +16,12 @@ def get_requests_count():
 
 
 def bring_up_new_worker_container(slave_name, db_name):
+    """
+    Start a slave container and it's correspinding mongodb container
+    :param slave_name: The name that should be assigned to the slave container
+    :param db_name: The name that should be assigned to the mongodb container
+    :return: None
+    """
     print("[+] Starting(S) container: " + db_name, file=sys.stdout)
     client.containers.run(
         image="mongo:3.6.3",
@@ -43,12 +49,13 @@ def bring_up_new_worker_container(slave_name, db_name):
 
 
 def start_scaling():
-    print("[+] Round started", file=sys.stdout)
     current_count = get_requests_count()
-    print("[*] Resetting requests count to 0", file=sys.stdout)
+    # Resetting db read requests count to 0
     f = open("requests_count.txt", "w")
     f.write("0")
     f.close()
+
+    # Getting the no. of slaves currently present
     containers = client.containers.list()
     current_slaves = 0
     for i in containers:
@@ -57,11 +64,16 @@ def start_scaling():
     print("[*] Containers before scaling: ", file=sys.stdout)
     print([i.name for i in client.containers.list()])
 
+    """ 
+    Given the no. of db read requests received in the previous 2 minutes,
+    get the no. of slaves that should be present in the present 2 minutes
+    """
     if current_count == 0:
         no_of_slaves_to_be_present = 1
     else:
         no_of_slaves_to_be_present = (int(math.ceil(current_count/20.0))*20)//20
 
+    # Scaling up - bring up 'n' new slaves
     if current_slaves < no_of_slaves_to_be_present:
         n = no_of_slaves_to_be_present - current_slaves
         print("[*] Scaling out - starting " + str(n) + " containers", file=sys.stdout)
@@ -71,14 +83,19 @@ def start_scaling():
             db_name = "mongo" + slave_name
             bring_up_new_worker_container(slave_name=slave_name, db_name=db_name)
 
+    # Scaling down - stop and remove 'n' slave containers
     elif current_slaves > no_of_slaves_to_be_present:
         n = current_slaves - no_of_slaves_to_be_present
         print("[*] Scaling in - removing " + str(n) + " containers", file=sys.stdout)
+
         for i in range(n):
+            # Getting the names of the current running slave containers
             temp = []
             for i in client.containers.list():
                 if "master" not in i.name and "mongo" not in i.name and "slave" in i.name:
                     temp.append(i)
+
+            # Choosing one random slave to stop
             cnt = random.choice(temp)
             print("[-] Removing db: " + "mongo" + cnt.name, file=sys.stdout)
             db = client.containers.get("mongo" + cnt.name)
@@ -90,15 +107,15 @@ def start_scaling():
             cnt.remove()
 
     else:
+        # No scaling required if no. of current slaves equals no. of slaves that should be present
         print("[*] No scaling required", file=sys.stdout)
 
     print("[*] Containers after scaling: ", file=sys.stdout)
     print([i.name for i in client.containers.list()])
 
-    print("[+] Round ended\n", file=sys.stdout)
-
 
 def scaling_threaded():
+    # Every 2 minutes start_scaling is ran in a thread asynchronously without interrupting the timer
     t1 = threading.Thread(target=start_scaling)
     t1.start()
 

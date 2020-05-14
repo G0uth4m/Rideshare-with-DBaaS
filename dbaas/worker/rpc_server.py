@@ -7,6 +7,13 @@ import threading
 
 class RpcServer:
     def __init__(self, queue_name, func, is_master, func2=None):
+        """
+        Connect to rabbitmq and declare a queue
+        :param queue_name: Name of the queue that should be declared
+        :param func: if master, func is the function definition of writedb, else readdb
+        :param is_master: boolean - True if master, False if slave
+        :param func2: if slave, then func2 is the function definition of writedb else None
+        """
         self.queue_name = queue_name
         self.func = func
         self.func2 = func2
@@ -17,6 +24,17 @@ class RpcServer:
         self.channel.basic_qos(prefetch_count=1)
 
     def on_request(self, ch, method, props, body):
+        """
+        Fetch the messaage that was consumed, perform read(if slave) or write(if master) operations based on the 'func'
+        definition.
+        Publish the result of the db operation to the reply queue as part of the request-reply pattern(RPC).
+        If it's a master publish the db query to the fanout exchange 'syncQ'
+        :param ch: 'pika.channel.Channel' object - Channel through which the message was consumed
+        :param method: Used to fetch the delivery_tag which sending an ACK
+        :param props: Used to fetch the name if the reply queue
+        :param body: Message that was consumed
+        :return: None
+        """
         res = json.loads(body)
         print("Received: " + str(res), file=sys.stdout)
         response = self.func(res)
@@ -35,11 +53,23 @@ class RpcServer:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def consume(self, queue_name, callback_fn):
+        """
+        Consume message from the specified queue
+        :param queue_name: Name of the queue to consume on
+        :param callback_fn: callback function as to what to do on consuming a message
+        :return: None
+        """
         self.channel.basic_consume(queue=queue_name, on_message_callback=callback_fn)
         print("[*] Listening on " + queue_name, file=sys.stdout)
         self.channel.start_consuming()
 
     def subscribe(self, exchange_name, callback_fn):
+        """
+        Declare a queue, bind it with the specified fanout exchange and consume on that queue
+        :param exchange_name: Name of the fanout exchange
+        :param callback_fn: callback function as to what to do on consuming a message
+        :return: None
+        """
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         channel2 = connection.channel()
         channel2.exchange_declare(exchange=exchange_name, exchange_type='fanout')
@@ -52,6 +82,7 @@ class RpcServer:
 
     def start(self):
         if not self.is_master:
+            # If it's a slave, consume on readQ and syncQ
             t1 = threading.Thread(target=self.consume, args=(self.queue_name, self.on_request,))
             t2 = threading.Thread(target=self.subscribe, args=("syncQ", self.callback_slave))
             t1.start()
@@ -59,13 +90,25 @@ class RpcServer:
             t1.join()
             t2.join()
         else:
+            # If it's a master, consume on writeQ
             self.consume(self.queue_name, self.on_request)
 
     def callback_slave(self, ch, method, properties, body):
+        """
+        Consume db write query from the syncQ and perform write operation on the database
+        :param body: the json_msg that was consumed on syncQ
+        :return: None
+        """
         print("Writing db for query: " + str(json.loads(body)), file=sys.stdout)
         self.func2(json.loads(body))
 
     def publish(self, exchange_name, json_msg):
+        """
+        Publish messages to the specified fanout exchange
+        :param exchange_name: Name of the fanout exchange
+        :param json_msg: Json that should be published to the exchange
+        :return: None
+        """
         print("Publishing: " + str(json_msg), file=sys.stdout)
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         channel = connection.channel()

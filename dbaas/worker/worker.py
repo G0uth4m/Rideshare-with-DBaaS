@@ -13,6 +13,13 @@ import docker
 
 
 def writedb(request_data):
+    """
+    Performs write operations on mongodb
+    :param request_data: json representing the db write query
+    :return: String indicating success or failure of the write operation
+    """
+
+    # Clear the database - remove all collections
     if 'clear' in request_data:
         try:
             for i in request_data["collections"]:
@@ -23,7 +30,9 @@ def writedb(request_data):
             print(e, file=sys.stdout)
             return "Response(status=400)"
 
+    # Delete a specified document in a specified collection
     if 'delete' in request_data:
+        # Check if the  received request is valid
         try:
             delete = request_data['delete']
             column = request_data['column']
@@ -43,6 +52,7 @@ def writedb(request_data):
             print(e, file=sys.stdout)
             return "Response(status=400)"
 
+    # Update a specified document in a specified collection
     if 'update' in request_data:
         try:
             collection = request_data['table']
@@ -64,6 +74,7 @@ def writedb(request_data):
             print(e, file=sys.stdout)
             return "Response(status=400)"
 
+    # Insert the specified document in the specified collection
     try:
         insert = request_data['insert']
         columns = request_data['columns']
@@ -90,6 +101,13 @@ def writedb(request_data):
 
 
 def readdb(request_data):
+    """
+    Perform read operations on mongodb.
+    :param request_data: json representing the db read query
+    :return: json if read is successful or a string if read is failure
+    """
+
+    # Get th no. of documents in the specified collection
     if 'count' in request_data:
         try:
             collection = db[request_data['table']]
@@ -99,6 +117,7 @@ def readdb(request_data):
             print(e, file=sys.stdout)
             return "Response(status=400)"
 
+    # Check if the received request is valid
     try:
         table = request_data['table']
         columns = request_data['columns']
@@ -114,6 +133,7 @@ def readdb(request_data):
     for i in columns:
         filter[i] = 1
 
+    # Read all documents from the specified collection which satisfies the 'where' condition
     if 'many' in request_data:
         try:
             collection = db[table]
@@ -128,6 +148,7 @@ def readdb(request_data):
             print(e, file=sys.stdout)
             return "Response(status=400)"
 
+    # Read a single document from the specified collection which satisfies the 'where' condition
     try:
         collection = db[table]
         result = collection.find_one(where, filter)
@@ -140,6 +161,11 @@ def readdb(request_data):
 
 
 def convert_timestamp_to_datetime(time_stamp):
+    """
+    Convert string(time_stamp) to a 'datetime.datetime' object
+    :param time_stamp: string represent the date
+    :return: 'datetime.datetime' object
+    """
     day = int(time_stamp[0:2])
     month = int(time_stamp[3:5])
     year = int(time_stamp[6:10])
@@ -150,6 +176,11 @@ def convert_timestamp_to_datetime(time_stamp):
 
 
 def convert_datetime_to_timestamp(k):
+    """
+    Convert 'datetime.datetime' object to a string
+    :param k: 'datetime.datetime' object
+    :return: converted string
+    """
     day = str(k.day) if len(str(k.day)) == 2 else "0" + str(k.day)
     month = str(k.month) if len(str(k.month)) == 2 else "0" + str(k.month)
     year = str(k.year)
@@ -165,6 +196,16 @@ def slave_rpc_server():
 
 
 def become_master(slave_process, old_name):
+    """
+    Open port 23456 and keep listening until a message is received. As soon as a message is received,
+    kill the process that is consuming on readQ and syncQ. Rename the new leader container as master. Create a
+    node "/worker/master" with data as the hostname of the worker's corresponding database. Delete the old slave node.
+    Start consuming on writeQ.
+
+    :param slave_process: 'multiprocessing.context.Process' object of the processs that is consuming on readQ and syncQ
+    :param old_name: Name of the zookeeper node that was initially created the slave before it became the leader
+    :return: None
+    """
     s = socket.socket()
     s.bind(("", 23456))
     print("[*] Listening for command from orchestrator to become master ...", file=sys.stdout)
@@ -199,6 +240,7 @@ def become_master(slave_process, old_name):
 
 
 def main():
+    # Create a zookeeper node for the current worker
     logging.basicConfig()
     zk = KazooClient(hosts=zookeeper_hostname)
     zk.start()
@@ -210,12 +252,14 @@ def main():
         db_name = os.environ["DB_HOSTNAME"]
         zk.create(node_name, db_name.encode(), ephemeral=True)
 
+    # If it's a master worker, consume on writeQ, else consume on readQ and syncQ
     if os.environ["WORKER_TYPE"] == "master":
         rpc_server = RpcServer(queue_name='writeQ', func=writedb, is_master=True)
         rpc_server.start()
     else:
         try:
             if node_name != "/worker/slave1":
+                # Fetch the hostname of the master database and update the database of the current slave
                 master_db = zk.get("/worker/master")[0].decode()
                 print("[*] Cloning database from master db: " + master_db, file=sys.stdout)
                 subprocess.call(

@@ -7,6 +7,10 @@ import sys
 
 class RpcClient:
     def __init__(self, routing_key):
+        """
+        Connect to rabbitmq and start consuming on the reply queue
+        :param routing_key: Name of the queue where db queries are written
+        """
         self.routing_key = routing_key
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_hostname))
         self.channel = self.connection.channel()
@@ -20,13 +24,25 @@ class RpcClient:
         )
 
     def on_response(self, ch, method, props, body):
+        """
+        Match the correlation id to get the correct response as part of the request-reply pattern
+        :param props: Used to fetch the correlation id of the reply
+        :param body: Message that was consumed
+        :return: None
+        """
         if self.corr_id == props.correlation_id:
             self.response = body
 
     def call(self, json_msg):
+        """
+        Write the message onto the specified queue and fetch the response as part of the request-reply pattern
+        :param json_msg: Message that should be written on the queue (Request)
+        :return: The message that was consumed from the reply queue (Reply)
+        """
         self.response = None
         self.corr_id = str(uuid.uuid4())
         print("Sending data: " + str(json_msg), file=sys.stdout)
+        # Write the json message onto the specified queue
         self.channel.basic_publish(
             exchange='',
             routing_key=self.routing_key,
@@ -37,6 +53,7 @@ class RpcClient:
             ),
             body=json.dumps(json_msg)
         )
+        # Listen for the response recieved as part of the request-reply pattern
         while self.response is None:
             self.connection.process_data_events()
 

@@ -4,7 +4,7 @@ from rpc_client import RpcClient
 from config import client, zookeeper_hostname
 import sys
 import multiprocessing
-from zoo_watch import ZooWatch
+from dbaas.orchestrator.zoo_watch import ZooWatch
 import subprocess
 from kazoo.client import KazooClient
 import logging
@@ -29,6 +29,7 @@ def read_from_db():
     increment_requests_count()
     global c
     c += 1
+    # Start the scalability script if it's the first request received
     if c == 1:
         subprocess.Popen("python3 scaling.py", shell=True)
 
@@ -159,6 +160,11 @@ def get_requests_count():
 
 
 def get_pid_of_all_workers(containers):
+    """
+    Get pids of all the worker containers including master and slaves
+    :param containers: 'docker.models.containers.ContainerCollection' object - list of all running container objects
+    :return: list of pids of all worker containers
+    """
     res = []
     for i in containers:
         if "mongo" not in i.name and ("slave" in i.name or "master" in i.name):
@@ -169,6 +175,11 @@ def get_pid_of_all_workers(containers):
 
 
 def get_pid_of_all_slaves(containers):
+    """
+    Get pids of all slave containers
+    :param containers: 'docker.models.containers.ContainerCollection' object - list of all running container objects
+    :return: list of pids of all slave containers
+    """
     res = []
     for i in containers:
         if "mongo" not in i.name and "slave" in i.name:
