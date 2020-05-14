@@ -1,8 +1,10 @@
 # RideShare 
-Cloud Computing Project
+Cloud Computing Project\
+\
+This project focuses on building a fault tolerant, highly available Database as a Service(DBaaS) for the RideShare application. The Rideshare application consists of two microservices - rides and users each hosting a flask application with API endpoints to create user, create ride, delete user, delete ride etc. These two microservices communicate with DBaaS to perform db operations.
 
 ## Cloud Deployment
-Create 3 EC2 instances - rides, users and dbaas\
+Launch 3 EC2 instances - rides, users and dbaas\
 Install docker in all of them
 ```
 $ sudo apt update
