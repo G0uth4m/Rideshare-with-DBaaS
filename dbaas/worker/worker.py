@@ -163,7 +163,7 @@ def readdb(request_data):
 def convert_timestamp_to_datetime(time_stamp):
     """
     Convert string(time_stamp) to a 'datetime.datetime' object
-    :param time_stamp: string represent the date
+    :param time_stamp: string representing the date
     :return: 'datetime.datetime' object
     """
     day = int(time_stamp[0:2])
@@ -203,7 +203,7 @@ def become_master(slave_process, old_name):
     Start consuming on writeQ.
 
     :param slave_process: 'multiprocessing.context.Process' object of the processs that is consuming on readQ and syncQ
-    :param old_name: Name of the zookeeper node that was initially created the slave before it became the leader
+    :param old_name: Name of the zookeeper node that was initially created by the slave before it became the leader
     :return: None
     """
     s = socket.socket()

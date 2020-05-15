@@ -42,6 +42,12 @@ def bring_up_new_worker_container(slave_name, db_name):
 
 
 def listdiff(l1, l2):
+    """
+    Get node that was deleted or created
+    :param l1: list of children before watch event
+    :param l2: list of children after watch event
+    :return: node name which was created or deleted
+    """
     if len(l1) > len(l2):
         for i in l1:
             if i not in l2:
